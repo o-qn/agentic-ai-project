@@ -1,0 +1,49 @@
+{
+  "normal.txt": {
+    "expected_status": "completed",
+    "expected_score": 100
+  },
+  "normal.pdf": {
+    "expected_status": "completed",
+    "expected_score": 100
+  },
+  "normal.docx": {
+    "expected_status": "completed",
+    "expected_score": 100
+  },
+  "scanned.pdf": {
+    "expected_status": "completed",
+    "expected_score": 100
+  },
+  "mixed.pdf": {
+    "expected_status": "completed",
+    "expected_score": 100
+  },
+  "identity-variation.txt": {
+    "expected_status": "completed",
+    "expected_score": 100
+  },
+  "short.txt": {
+    "expected_status": "completed",
+    "expected_score": 30
+  },
+  "prompt-injection.txt": {
+    "expected_status": "review"
+  },
+  "joke.txt": {
+    "expected_status": "review"
+  },
+  "corrupt.docx": {
+    "expected_status": "review"
+  },
+  "blank.pdf": {
+    "expected_status": "review"
+  },
+  "long.txt": {
+    "expected_status": [
+      "completed",
+      "review"
+    ],
+    "required": "Complete evidence coverage or explicit review; never truncate silently"
+  }
+}

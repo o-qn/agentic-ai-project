@@ -1,0 +1,96 @@
+{
+  "role_id": "1E5kMTip3PBRAF3X6KS5wtswOnoaAG5-o",
+  "role_name": "Software Engineer",
+  "jd_hash": "7ce71f7509ed006806745e1f4cade9a8de9d8854e00d183e079af23fedc974d7",
+  "approved": false,
+  "rubric": {
+    "criteria": [
+      {
+        "id": "python",
+        "weight": 15,
+        "description": "Python backend programming",
+        "supported": "Describes implementing or maintaining a Python backend service",
+        "partial": "Lists Python or gives a limited programming example",
+        "not_demonstrated": "The CV does not establish this requirement; do not infer that the applicant lacks it."
+      },
+      {
+        "id": "framework",
+        "weight": 10,
+        "description": "Django, Flask or FastAPI; any one qualifies",
+        "supported": "Describes using at least one of Django, Flask or FastAPI in a backend application",
+        "partial": "Names at least one accepted framework without application details",
+        "not_demonstrated": "The CV does not establish this requirement; do not infer that the applicant lacks it."
+      },
+      {
+        "id": "rest_api",
+        "weight": 10,
+        "description": "Building or integrating REST APIs",
+        "supported": "Describes implementing or integrating a REST API with an identifiable purpose",
+        "partial": "Lists REST/API experience without an implementation example",
+        "not_demonstrated": "The CV does not establish this requirement; do not infer that the applicant lacks it."
+      },
+      {
+        "id": "sql",
+        "weight": 10,
+        "description": "SQL and relational database schemas or queries",
+        "supported": "Describes relational schema design or SQL query development",
+        "partial": "Lists SQL or relational databases without implementation evidence",
+        "not_demonstrated": "The CV does not establish this requirement; do not infer that the applicant lacks it."
+      },
+      {
+        "id": "git",
+        "weight": 5,
+        "description": "Git version control",
+        "supported": "Describes Git use in project or team development",
+        "partial": "Lists Git without a usage example",
+        "not_demonstrated": "The CV does not establish this requirement; do not infer that the applicant lacks it."
+      },
+      {
+        "id": "testing",
+        "weight": 10,
+        "description": "Automated software testing and defect investigation",
+        "supported": "Describes automated tests plus troubleshooting/debugging in software work",
+        "partial": "Provides evidence of only one of automated tests or defect investigation, or lists both without details",
+        "not_demonstrated": "The CV does not establish this requirement; do not infer that the applicant lacks it."
+      },
+      {
+        "id": "professional_experience",
+        "weight": 20,
+        "description": "At least two years of professional software development",
+        "supported": "States at least two years or gives non-overlapping dated professional software roles totaling at least 24 months",
+        "partial": "Establishes some professional software experience but less than 24 months or unclear dates",
+        "not_demonstrated": "The CV does not establish this requirement; do not infer that the applicant lacks it."
+      },
+      {
+        "id": "delivered_backend",
+        "weight": 10,
+        "description": "Delivery and maintenance of a backend application for real users",
+        "supported": "Describes a deployed backend with real users and ongoing maintenance",
+        "partial": "Describes a backend project but real users or maintenance are not established",
+        "not_demonstrated": "The CV does not establish this requirement; do not infer that the applicant lacks it."
+      },
+      {
+        "id": "team_documentation",
+        "weight": 5,
+        "description": "Code reviews and technical documentation",
+        "supported": "Describes both code review participation and technical documentation",
+        "partial": "Describes one of the two or lists both without examples",
+        "not_demonstrated": "The CV does not establish this requirement; do not infer that the applicant lacks it."
+      },
+      {
+        "id": "preferred",
+        "weight": 5,
+        "description": "Optional Docker, CI/CD, cloud deployment, or JavaScript/TypeScript",
+        "supported": "Describes practical use of two or more preferred skills; AWS, Azure and GCP are alternatives",
+        "partial": "Describes practical use of one preferred skill or only lists several",
+        "not_demonstrated": "The CV does not establish this requirement; do not infer that the applicant lacks it."
+      }
+    ]
+  },
+  "review_notes": [
+    "Draft for HR approval; not an approved hiring rubric.",
+    "No education/certification weight: the job description requires no particular degree or certification.",
+    "Do not infer experience duration from overlapping roles or missing dates.",
+    "Preferred criteria are optional; scores measure CV evidence only."
+  ]
+}

@@ -1,0 +1,24 @@
+[Unit]
+Description=CPU-only local Ollama for HR
+After=network.target
+[Service]
+Type=simple
+WorkingDirectory=@PROJECT@
+EnvironmentFile=@PROJECT@/.env
+ExecStart=@PROJECT@/scripts/ollama-cpu.sh
+Environment=HR_OLLAMA_BINARY=@OLLAMA@
+MemoryAccounting=yes
+MemoryHigh=14G
+MemoryMax=16G
+MemorySwapMax=0
+CPUQuota=600%
+TasksMax=128
+# Deny physical GPU devices at the service boundary as well as model configuration.
+PrivateDevices=yes
+NoNewPrivileges=yes
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=30
+UMask=0077
+[Install]
+WantedBy=default.target

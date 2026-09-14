@@ -1,0 +1,23 @@
+[
+  {
+    "role_id": "1E5kMTip3PBRAF3X6KS5wtswOnoaAG5-o",
+    "name": "Software Engineer",
+    "job_description": "software-engineer.txt",
+    "draft": "software-engineer.rubric-draft.json",
+    "jd_hash": "7ce71f7509ed006806745e1f4cade9a8de9d8854e00d183e079af23fedc974d7"
+  },
+  {
+    "role_id": "1e05OSn6pEEIpvEcC7qN80a0YmCPlrdGq",
+    "name": "AI Engineer",
+    "job_description": "ai-engineer.txt",
+    "draft": "ai-engineer.rubric-draft.json",
+    "jd_hash": "94c9863dd87b317156d45f65df81f80287c4abb11fdabfa8e294e3fc37a20ae2"
+  },
+  {
+    "role_id": "1R5ESQcaFSmbStaBPUADMwfkLP5UYlfMw",
+    "name": "Acountant ",
+    "job_description": "accountant.txt",
+    "draft": "accountant.rubric-draft.json",
+    "jd_hash": "5ffbb5cec06be6657b6775ce1c4781860d1511b9a7f27382648ba5b728b21a89"
+  }
+]

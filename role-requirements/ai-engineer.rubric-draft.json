@@ -1,0 +1,96 @@
+{
+  "role_id": "1e05OSn6pEEIpvEcC7qN80a0YmCPlrdGq",
+  "role_name": "AI Engineer",
+  "jd_hash": "94c9863dd87b317156d45f65df81f80287c4abb11fdabfa8e294e3fc37a20ae2",
+  "approved": false,
+  "rubric": {
+    "criteria": [
+      {
+        "id": "python",
+        "weight": 10,
+        "description": "Python programming for AI applications",
+        "supported": "Describes implementing an AI or ML application in Python",
+        "partial": "Lists Python or provides limited programming evidence",
+        "not_demonstrated": "The CV does not establish this requirement; do not infer that the applicant lacks it."
+      },
+      {
+        "id": "data_processing",
+        "weight": 12,
+        "description": "Data preparation and validation using pandas and NumPy",
+        "supported": "Describes data preparation/validation using both pandas and NumPy",
+        "partial": "Names both libraries or shows practical use of only one",
+        "not_demonstrated": "The CV does not establish this requirement; do not infer that the applicant lacks it."
+      },
+      {
+        "id": "ml_framework",
+        "weight": 12,
+        "description": "scikit-learn, PyTorch or TensorFlow; any one qualifies",
+        "supported": "Describes model development with at least one accepted library",
+        "partial": "Names an accepted library without model-development details",
+        "not_demonstrated": "The CV does not establish this requirement; do not infer that the applicant lacks it."
+      },
+      {
+        "id": "evaluation",
+        "weight": 16,
+        "description": "Model metrics and correct training, validation and test separation",
+        "supported": "Describes evaluation metrics and distinct training, validation and held-out test use without apparent leakage",
+        "partial": "Mentions metrics or data splits but leaves evaluation design incomplete",
+        "not_demonstrated": "The CV does not establish this requirement; do not infer that the applicant lacks it."
+      },
+      {
+        "id": "model_api",
+        "weight": 10,
+        "description": "Serving or integrating models through APIs",
+        "supported": "Describes a concrete model-serving or API integration implementation",
+        "partial": "Lists model-serving/API tools without implementation evidence",
+        "not_demonstrated": "The CV does not establish this requirement; do not infer that the applicant lacks it."
+      },
+      {
+        "id": "git",
+        "weight": 5,
+        "description": "Git version control",
+        "supported": "Describes Git use for a project or team workflow",
+        "partial": "Lists Git without an example",
+        "not_demonstrated": "The CV does not establish this requirement; do not infer that the applicant lacks it."
+      },
+      {
+        "id": "professional_experience",
+        "weight": 20,
+        "description": "At least two years of professional AI/ML application development",
+        "supported": "States at least two years or gives non-overlapping dated professional AI/ML roles totaling at least 24 months",
+        "partial": "Establishes professional AI/ML work but duration is short or unclear",
+        "not_demonstrated": "The CV does not establish this requirement; do not infer that the applicant lacks it."
+      },
+      {
+        "id": "deployed_application",
+        "weight": 10,
+        "description": "At least one AI/ML application deployed for real users",
+        "supported": "Describes an AI/ML deployment and identifies its real-user or production context",
+        "partial": "Describes deployment but real-user use is unclear",
+        "not_demonstrated": "The CV does not establish this requirement; do not infer that the applicant lacks it."
+      },
+      {
+        "id": "operations",
+        "weight": 3,
+        "description": "Monitoring quality and documenting experiments, limitations and deployment",
+        "supported": "Describes model monitoring/quality investigation and relevant technical documentation",
+        "partial": "Establishes only one of monitoring or documentation",
+        "not_demonstrated": "The CV does not establish this requirement; do not infer that the applicant lacks it."
+      },
+      {
+        "id": "preferred",
+        "weight": 2,
+        "description": "Optional RAG, embeddings/vector databases, tool calling, structured outputs, Docker/cloud, tracking",
+        "supported": "Describes practical use of two or more of these preferred areas",
+        "partial": "Describes one preferred area or only lists several",
+        "not_demonstrated": "The CV does not establish this requirement; do not infer that the applicant lacks it."
+      }
+    ]
+  },
+  "review_notes": [
+    "Draft for HR approval; not an approved hiring rubric.",
+    "No education/certification weight: the job description requires no particular degree or certification.",
+    "Do not infer experience duration from overlapping roles or missing dates.",
+    "Preferred criteria are optional; scores measure CV evidence only."
+  ]
+}

@@ -1,0 +1,33 @@
+Job title: Software Engineer
+Experience level: Mid-level
+
+Role summary:
+Develop and maintain backend services, APIs, and database-driven applications. Work with the team to deliver reliable, maintainable software.
+
+Responsibilities:
+- Build and maintain backend applications using Python.
+- Design and integrate REST APIs.
+- Develop and maintain relational database schemas and queries.
+- Write automated tests and troubleshoot software defects.
+- Participate in code reviews and maintain technical documentation.
+
+Required skills:
+- Python programming.
+- Backend development using Django, Flask, or FastAPI; any one is acceptable.
+- Building or integrating REST APIs.
+- SQL and relational databases.
+- Git version control.
+- Automated software testing.
+
+Required experience:
+- At least 2 years of professional software development experience.
+- Experience delivering and maintaining a backend application used by real users.
+
+Education and certifications:
+- No specific degree or certification required.
+
+Preferred skills:
+- Docker.
+- CI/CD pipelines.
+- Deployment on AWS, Azure, or Google Cloud; any one is acceptable.
+- JavaScript or TypeScript.

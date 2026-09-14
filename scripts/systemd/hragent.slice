@@ -1,0 +1,8 @@
+[Unit]
+Description=Combined HR web, scanner, worker and extraction resource budget
+[Slice]
+MemoryAccounting=yes
+MemoryHigh=3500M
+MemoryMax=4G
+MemorySwapMax=0
+TasksMax=128

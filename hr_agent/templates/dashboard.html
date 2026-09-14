@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf }}">
+    <title>CV screening</title>
+    <link rel="stylesheet" href="/static/dashboard.css">
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>CV screening</h1>
+        <span id="breadcrumb">
+        </span>
+      </header>
+      <div class="toolbar">
+        <select id="role" aria-label="Select role">
+          <option>No roles yet</option>
+        </select>
+        <label>
+          <input type="checkbox" id="automatic"> Auto process</label>
+        <button id="check">Check Drive now</button>
+        <a id="report-link" target="_blank" rel="noreferrer">Report</a>
+        <a id="csv-link">CSV</a>
+      </div>
+      <p id="notice" role="status">Loading…</p>
+      <section id="processing" aria-label="Processing progress">
+        <div class="progress-heading">
+          <strong id="progress-label">Idle</strong>
+          <span id="progress-time">
+          </span>
+        </div>
+        <progress id="progress-bar" max="1" value="0" aria-label="Processing progress">
+        </progress>
+        <p id="progress-detail" aria-live="polite">Waiting for status.</p>
+      </section>
+      <div id="stats" class="stats">
+      </div>
+      <section id="overview">
+        <h2>Top candidates</h2>
+        <div id="top" class="cards">
+        </div>
+      </section>
+      <section id="applicants">
+        <div class="section-head">
+          <h2>All applicants</h2>
+          <input id="filter" placeholder="Filter applicants" aria-label="Filter applicants">
+          <select id="sort" aria-label="Sort applicants">
+            <option value="score">Score</option>
+            <option value="name">Name</option>
+            <option value="status">Status</option>
+          </select>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Applicant</th>
+                <th>Score / rank</th>
+                <th>Status</th>
+                <th>Index</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="application-rows">
+            </tbody>
+          </table>
+        </div>
+        <details id="evidence-panel">
+          <summary>Evidence</summary>
+          <div id="evidence">
+          </div>
+        </details>
+      </section>
+      <section id="chat">
+        <h2>Ask about applicants</h2>
+        <form id="chat-form">
+          <input id="question" placeholder="Who has Python experience?" aria-label="Ask about applicants" required maxlength="1000">
+          <button>Ask</button>
+        </form>
+        <div id="chat-answer">
+        </div>
+      </section>
+      <details id="review">
+        <summary>Review queue</summary>
+        <div id="review-list">
+        </div>
+        <div id="review-controls" hidden>
+          <h3 id="review-title">
+          </h3>
+          <input id="review-reason" placeholder="Reason" aria-label="Review decision reason">
+          <select id="review-action" aria-label="Review action">
+            <option value="dismiss">Dismiss and reassess</option>
+            <option value="confirm_spam">Confirm spam</option>
+            <option value="restore">Restore and reassess</option>
+            <option value="retry">Retry</option>
+          </select>
+          <button id="review-save">Save decision</button>
+        </div>
+      </details>
+      <details id="rubric">
+        <summary>Scoring settings</summary>
+        <p id="folder-links">
+        </p>
+        <details>
+          <summary>Job description</summary>
+          <pre id="jd">
+          </pre>
+        </details>
+        <button id="draft">Draft from job description</button>
+        <label for="rubric-json">Scoring rules</label>
+        <textarea id="rubric-json" rows="8" spellcheck="false">
+        </textarea>
+        <div class="approval">
+          <input id="actor" placeholder="Your name" aria-label="Your name">
+          <label>
+            <input type="checkbox" id="relevance"> Criteria are job-relevant.</label>
+          <button id="approve">Apply and reassess</button>
+        </div>
+      </details>
+      <details id="blacklist">
+        <summary>Document holds</summary>
+        <div id="blacklist-list">
+        </div>
+      </details>
+      <details>
+        <summary>Processing log</summary>
+        <div id="activity">
+        </div>
+      </details>
+    </main>
+    <div id="toast" role="alert" hidden>
+    </div>
+    <script src="/static/dashboard.js">
+    </script>
+  </body>
+</html>

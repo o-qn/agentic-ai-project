@@ -1,0 +1,34 @@
+Job title: AI Engineer
+Experience level: Mid-level
+
+Role summary:
+Build, evaluate, and deploy AI applications. Develop data pipelines and integrate machine learning models into software products.
+
+Responsibilities:
+- Prepare and validate data for machine learning applications.
+- Build and evaluate models against defined performance metrics.
+- Integrate models into applications through APIs.
+- Monitor deployed models and investigate quality issues.
+- Document experiments, limitations, and deployment procedures.
+
+Required skills:
+- Python programming.
+- Data processing using pandas and NumPy.
+- Machine learning development using scikit-learn, PyTorch, or TensorFlow; any one is acceptable.
+- Model evaluation and appropriate use of training, validation, and test datasets.
+- Serving or integrating models through APIs.
+- Git version control.
+
+Required experience:
+- At least 2 years of professional experience developing AI or machine learning applications.
+- Experience deploying at least one machine learning or AI application for real users.
+
+Education and certifications:
+- No specific degree or certification required.
+
+Preferred skills:
+- Retrieval-augmented generation (RAG).
+- Embeddings and vector databases.
+- LLM tool calling or structured outputs.
+- Docker and cloud deployment.
+- Model monitoring and experiment tracking.

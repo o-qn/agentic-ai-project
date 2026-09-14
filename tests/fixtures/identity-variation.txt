@@ -1,0 +1,7 @@
+Name: Other Example
+Email: avery@example.invalid
+Built a Python inventory application.
+Built a SQL database for warehouse reporting.
+Age: 58
+Gender: Woman
+Nationality: Not relevant to qualifications

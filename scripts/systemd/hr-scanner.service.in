@@ -1,0 +1,25 @@
+[Unit]
+Description=HR Drive scanner and single inference worker
+After=network-online.target hr-ollama.service
+Wants=network-online.target hr-ollama.service
+StartLimitIntervalSec=300
+StartLimitBurst=5
+[Service]
+Type=simple
+WorkingDirectory=@PROJECT@
+EnvironmentFile=@PROJECT@/.env
+ExecStart=@PYTHON@ -m hr_agent.cli service
+Slice=hragent.slice
+Restart=on-failure
+RestartSec=15
+TimeoutStopSec=165
+KillMode=mixed
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+Environment=OMP_THREAD_LIMIT=1
+Environment=OPENBLAS_NUM_THREADS=1
+Environment=PYTHONUNBUFFERED=1
+[Install]
+WantedBy=default.target

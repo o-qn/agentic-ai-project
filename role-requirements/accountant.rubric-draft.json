@@ -1,0 +1,96 @@
+{
+  "role_id": "1R5ESQcaFSmbStaBPUADMwfkLP5UYlfMw",
+  "role_name": "Acountant ",
+  "jd_hash": "5ffbb5cec06be6657b6775ce1c4781860d1511b9a7f27382648ba5b728b21a89",
+  "approved": false,
+  "rubric": {
+    "criteria": [
+      {
+        "id": "bookkeeping",
+        "weight": 15,
+        "description": "Double-entry bookkeeping, journal entries and general ledger maintenance",
+        "supported": "Describes journal entries/double-entry work and maintaining the general ledger",
+        "partial": "Demonstrates only one area or lists the bookkeeping skills without tasks",
+        "not_demonstrated": "The CV does not establish this requirement; do not infer that the applicant lacks it."
+      },
+      {
+        "id": "reconciliation",
+        "weight": 12,
+        "description": "Bank reconciliations and discrepancy investigation",
+        "supported": "Describes reconciling bank accounts and investigating discrepancies",
+        "partial": "Lists reconciliations or describes them without discrepancy investigation",
+        "not_demonstrated": "The CV does not establish this requirement; do not infer that the applicant lacks it."
+      },
+      {
+        "id": "ap_ar",
+        "weight": 10,
+        "description": "Accounts payable and accounts receivable records",
+        "supported": "Describes maintaining both AP and AR records",
+        "partial": "Describes one of AP/AR or lists both without tasks",
+        "not_demonstrated": "The CV does not establish this requirement; do not infer that the applicant lacks it."
+      },
+      {
+        "id": "excel",
+        "weight": 12,
+        "description": "Excel formulas and pivot tables",
+        "supported": "Describes using both Excel formulas and pivot tables for accounting work",
+        "partial": "Demonstrates one of formulas/pivots or lists both without an example",
+        "not_demonstrated": "The CV does not establish this requirement; do not infer that the applicant lacks it."
+      },
+      {
+        "id": "accounting_system",
+        "weight": 8,
+        "description": "Accounting software or an ERP system",
+        "supported": "Names and describes using an accounting/ERP system for accounting tasks",
+        "partial": "Names a relevant system without usage evidence",
+        "not_demonstrated": "The CV does not establish this requirement; do not infer that the applicant lacks it."
+      },
+      {
+        "id": "professional_experience",
+        "weight": 20,
+        "description": "At least two years of professional accounting experience",
+        "supported": "States at least two years or gives non-overlapping dated accounting roles totaling at least 24 months",
+        "partial": "Establishes professional accounting work but duration is short or unclear",
+        "not_demonstrated": "The CV does not establish this requirement; do not infer that the applicant lacks it."
+      },
+      {
+        "id": "closing",
+        "weight": 10,
+        "description": "Month-end closing and support for year-end closing",
+        "supported": "Describes month-end closing tasks and year-end closing support",
+        "partial": "Establishes month-end closing only or lists closing without specific tasks",
+        "not_demonstrated": "The CV does not establish this requirement; do not infer that the applicant lacks it."
+      },
+      {
+        "id": "reporting",
+        "weight": 8,
+        "description": "Financial reports or supporting financial schedules",
+        "supported": "Describes preparing financial reports or supporting schedules",
+        "partial": "Lists reporting without an identifiable deliverable",
+        "not_demonstrated": "The CV does not establish this requirement; do not infer that the applicant lacks it."
+      },
+      {
+        "id": "audit_documentation",
+        "weight": 3,
+        "description": "Documentation and audit-request support",
+        "supported": "Describes maintaining accounting documentation and responding to audit requests",
+        "partial": "Establishes one of documentation or audit-request support",
+        "not_demonstrated": "The CV does not establish this requirement; do not infer that the applicant lacks it."
+      },
+      {
+        "id": "preferred",
+        "weight": 2,
+        "description": "Optional budgeting/variance analysis, payroll, inventory accounting or IFRS",
+        "supported": "Describes practical use of two or more preferred accounting areas",
+        "partial": "Describes practical use of one preferred area or only lists several",
+        "not_demonstrated": "The CV does not establish this requirement; do not infer that the applicant lacks it."
+      }
+    ]
+  },
+  "review_notes": [
+    "Draft for HR approval; not an approved hiring rubric.",
+    "No education/certification weight: the job description requires no particular degree or certification.",
+    "Do not infer experience duration from overlapping roles or missing dates.",
+    "Preferred criteria are optional; scores measure CV evidence only."
+  ]
+}

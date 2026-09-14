@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "local-hr-agent"
+version = "0.1.0"
+description = "Local, evidence-based HR screening with durable Drive synchronization"
+requires-python = ">=3.11"
+dynamic = ["dependencies"]
+
+[project.scripts]
+hr-agent = "hr_agent.cli:main"
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.in"]}
+
+[tool.setuptools.packages.find]
+include = ["hr_agent*"]
+
+[tool.setuptools.package-data]
+hr_agent = ["templates/*", "static/*", "migrations/*.sql"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

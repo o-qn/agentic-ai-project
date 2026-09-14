@@ -1,0 +1,12 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+data/
+credentials.json
+token.json
+*.egg-info/
+.test-venv/
+runtime/
+deployment/systemd/

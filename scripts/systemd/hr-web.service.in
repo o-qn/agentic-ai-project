@@ -1,0 +1,17 @@
+[Unit]
+Description=Local HR dashboard
+After=network.target
+[Service]
+Type=simple
+WorkingDirectory=@PROJECT@
+EnvironmentFile=@PROJECT@/.env
+ExecStart=@GUNICORN@ --bind 127.0.0.1:@PORT@ --workers 1 --threads 4 --timeout 180 hr_agent.wsgi:app
+Slice=hragent.slice
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+[Install]
+WantedBy=default.target
