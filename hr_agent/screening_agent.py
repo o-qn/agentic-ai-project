@@ -55,7 +55,8 @@ class ScreeningAgent:
             state['spent'] = initial_spent+time.monotonic()-run_started
             self.db.execute('UPDATE jobs SET agent_state=?,updated=? WHERE id=? AND state!=? AND generation=?',
                             (json.dumps(state),time.time(),job['id'],'superseded',job['generation']))
-        while state['turns']<12:
+        turn_limit = self.config.router_max_turns if self.config.provider == 'agentrouter' else 12
+        while state['turns']<turn_limit:
             remaining = self.config.job_seconds-(initial_spent+time.monotonic()-run_started)
             if remaining<1:
                 raise NeedsReview('Assessment exceeded total job duration')
@@ -67,7 +68,7 @@ class ScreeningAgent:
                        'inspected_sections':state['seen'],'draft':state.get('draft'),
                        'current_sections':[source[key] for key in state.get('current_section_ids',[]) if key in source],
                        'hr_dismissed_previous_flag':bool(app.get('review_dismissed')), 
-                       'last_tool_result':state.get('result'),'turns_left':12-state['turns']}
+                       'last_tool_result':state.get('result'),'turns_left':turn_limit-state['turns']}
             valid_draft=bool(state.get('draft')) and not validate_evidence(state['draft'],rubric,sections,set(state['seen']))
             available=tools
             if valid_draft:
@@ -134,4 +135,4 @@ class ScreeningAgent:
                     # Validation errors are concise; no arbitrary exception/CV text in logs.
                     state['result'] = {'error':str(exc)[:700]}
                 save()
-        raise NeedsReview('Assessment incomplete after 12 model turns')
+        raise NeedsReview(f'Assessment incomplete after {turn_limit} model turns')

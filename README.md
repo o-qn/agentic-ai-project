@@ -1,8 +1,12 @@
 # CV Screening
 
+<<<<<<< HEAD
 A local CV-screening application that reads CVs from Google Drive, evaluates them against job descriptions, and displays the results in a lightweight dashboard.
 
 The application uses Ollama to run language models locally.
+=======
+A personal project that reads CVs from Google Drive, scores them against job descriptions, and shows the results in a small local dashboard. Assessment can use Agent Router through the genuine Codex CLI. Ollama provides local CPU embeddings.
+>>>>>>> 4406e42 (Api added instead of gpu)
 
 ## Start the app
 
@@ -79,7 +83,16 @@ Press `Ctrl+C` in each terminal to stop the processes.
 
 Model and runtime configuration is stored in `.env`.
 
+<<<<<<< HEAD
 Key settings include:
+=======
+- `HR_MODEL_PROVIDER`: `agentrouter` for hosted assessment, or `ollama` for local assessment.
+- `HR_MODEL`: `deepseek-v4-flash` for the hosted route (`qwen3:4b` for the earlier local route).
+- `HR_EMBED_MODEL`: `nomic-embed-text:v1.5` for applicant search.
+- `HR_SCAN_SECONDS`: `300` between scheduled Drive checks.
+- `HR_OLLAMA_BINARY`: the Ollama executable under `runtime/ollama`.
+- `OLLAMA_MODELS`: the model files under `runtime/ollama-models`.
+>>>>>>> 4406e42 (Api added instead of gpu)
 
 * `HR_MODEL`: Language model used for CV assessment. Default: `qwen3:4b`
 * `HR_EMBED_MODEL`: Embedding model used for applicant search. Default: `nomic-embed-text:v1.5`
@@ -169,6 +182,7 @@ docs/
 
 ## Tests
 
+<<<<<<< HEAD
 Run the automated test suite with:
 
 ```bash
@@ -188,3 +202,115 @@ OAuth client credentials
 Make sure these paths are covered by `.gitignore` before publishing or sharing the repository.
 
 CV files, generated reports, authentication tokens, and the application database may contain personal or sensitive information and should be handled accordingly.
+=======
+Keep `data`, `.env`, and the OAuth client file out of source control. The old `Documents/Codex` folder is retained as a backup while you test this cleaned copy.
+
+
+## Agent Router through Codex CLI
+
+`agentrouter` now invokes the genuine installed Codex CLI using the Responses
+endpoint. The rejected direct Python HTTP route has been removed. The existing
+application tools still run in Python, with section/scope checks, evidence validation,
+draft feedback, saved checkpoints, and deterministic weighted scores. Each model
+turn launches one isolated CLI process; this is still a multi-turn agent. The CLI
+returns `actions` with `operation` and `input` fields; Python maps them to the
+existing tool envelope after validation.
+
+Keep the key in `AGENTROUTER_API_KEY.txt` (private, ignored by Git). It is read at
+runtime and passed only in the child's `CODEX_GATEWAY_API_KEY` environment.
+Normal Codex configuration and shell startup files are not used or changed.
+Linux `/usr/bin/bwrap` is required: only runtime libraries, certificate/DNS files
+and a private temporary folder are mounted. Project files, Drive credentials and
+your normal home directory are inaccessible. CLI settings disable shell, browser,
+plugins, apps and delegation. The installed CLI still advertises `request_user_input`,
+which is unavailable in Default-mode exec. Internal tool activity in the event
+stream causes rejection. Process groups are killed on timeout; bubblewrap also
+terminates its children if the calling worker dies.
+
+### Synthetic verification
+
+```bash
+cd "/home/qn/Documents/Agentic Ai project"
+# Offline: dummy key and loopback provider; checks actual tools and filesystem isolation.
+.venv/bin/python scripts/verify_codex_isolation.py
+# Paid: at most 12 CLI launches total, synthetic CVs only, no live Drive access.
+.venv/bin/python scripts/trial_agentrouter.py
+# Offline application tests.
+.test-venv/bin/python -m pytest -q
+```
+
+The paid synthetic test runs the full ScreeningAgent loop and writes
+`output/agentrouter-trial/codex-loop-results.json`. A failed trial exits nonzero.
+`results.json` is the old failed direct-HTTP trial; `codex-results.json` is the old
+single-batch model test. Neither is a full-loop migration test. The new report
+records times, turns, outcomes and available CLI usage. Trial databases are temporary;
+the twelve-launch trial cap applies to each trial execution.
+
+### Select hosted assessment
+
+Set these in the project's `.env`:
+
+```dotenv
+HR_MODEL_PROVIDER=agentrouter
+HR_MODEL=deepseek-v4-flash
+AGENTROUTER_BASE_URL=https://agentrouter.org/v1
+HR_CODEX_BINARY=/usr/lib/chatgpt/resources/codex
+HR_ROUTER_MAX_TURNS=6
+HR_ROUTER_DAILY_REQUESTS=12
+```
+
+Pause **Auto process** before switching providers, then restart `hr-web` and
+`hr-scanner`. Enable **Auto process** only when ready to send queued CV text and
+job criteria to Agent Router. Keep `HR_EMBED_MODEL=nomic-embed-text:v1.5` and
+`hr-ollama` running for local CPU search embeddings. The dashboard identifies the
+provider/model and retains its progress display. POC mode still bypasses model
+acceptance; it is not evidence of accuracy.
+
+### Limits and usage
+
+Hosted assessments initially allow **6 model turns per CV**, within the original
+12-turn ceiling; local assessments retain 12. This deliberately reduces potential
+CLI overhead while preserving tool execution and validation feedback. Incomplete
+work goes to review. Request timeouts and the saved total job time budget also apply.
+There is no automatic provider fallback or transport retry.
+
+An atomic `data/router-budget.sqlite3` ledger reserves each CLI launch before
+starting it, including failed attempts. The initial cap is **12 launches per UTC
+day**, shared by assessment and rubric drafting. It survives service restarts.
+The worker pauses Auto process when the cap is exhausted; resume manually after
+reviewing usage and the next UTC day, or deliberately increase the configured cap.
+A CLI launch is not necessarily exactly one gateway request: the CLI can perform
+internal work. These are not dollar-spend limits.
+
+`data/api-usage.jsonl` contains metadata only: time, model, success/failure categories,
+CLI-reported input/cached/output tokens when available, and discovery-warning flags.
+Missing token data is unavailable, not zero usage. Do not add cached tokens again
+to input tokens. Earlier CLI tests reported roughly 59–60k tokens; their cause and
+relationship to billable tokens or credit deductions were not established.
+The isolated offline probe measures request text sizes, not billable tokens.
+Discovery/fallback warnings can be nonfatal. Compare account credit separately;
+no conversion from displayed quota or token counts to dollars is assumed.
+
+The hosted route validates JSON schema and limits the final result to 64 KiB.
+JSON-encoded argument strings are decoded before applying the same strict schema.
+`HR_OUTPUT_TOKENS` reserves space in the conservative input budget; it is **not a
+verified hosted generation-token cap**. The CLI does not expose a verified equivalent
+of the old Python request's `max_tokens` setting here.
+
+Evidence quotes can establish textual support, not truthful claims or correct
+semantic interpretation. Drive sharing remains unchanged; blocked report uploads
+can still prevent dependent CV moves. Local results/downloads remain usable.
+The PDF guide covers the earlier local-only implementation and has not been updated.
+
+### Verified migration run (15 September 2026)
+
+The final three-case full-loop trial passed: specific projects 100/100, listed
+skills 50/100, and ranking manipulation sent to review with an exact citation.
+Each case used two model turns; six CLI launches took 21.60 seconds in total.
+The CLI reported 23,876 input-plus-output tokens across those six launches, with
+complete usage fields. This is not a verified billable total or credit deduction.
+The test covers small synthetic inputs, not general screening accuracy. Earlier
+integration attempts failed on schema/format mismatches and unsupported native
+calls; the final JSON-decision envelope avoids that confusion in the tested cases.
+No real applicant data was used for these tests. CPU embeddings were separately
+verified with `nomic-embed-text:v1.5` (768 dimensions).

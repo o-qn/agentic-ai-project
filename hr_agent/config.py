@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 import os
 from urllib.parse import urlparse
@@ -12,6 +12,12 @@ class Config:
     ollama: str = "http://127.0.0.1:11434"
     model: str = ""
     embed_model: str = ""
+    provider: str = "ollama"
+    router_url: str = "https://agentrouter.org/v1"
+    router_key: str = field(default="", repr=False)
+    codex_binary: str = "/usr/lib/chatgpt/resources/codex"
+    router_max_turns: int = 6
+    router_daily_requests: int = 12
     scan_seconds: int = 300
     timeout: int = 120
     job_seconds: int = 900
@@ -25,6 +31,17 @@ class Config:
     hr_principals: tuple[str, ...] = ()
 
     def __post_init__(self):
+        if self.provider not in {'ollama', 'agentrouter'}:
+            raise ValueError('HR_MODEL_PROVIDER must be ollama or agentrouter')
+        if not 1 <= self.router_max_turns <= 12 or not 1 <= self.router_daily_requests <= 1000:
+            raise ValueError("Hosted limits: turns 1–12, daily requests 1–1000")
+        if not Path(self.codex_binary).is_absolute():
+            raise ValueError("HR_CODEX_BINARY must be an absolute path")
+        remote = urlparse(self.router_url)
+        if (remote.scheme != 'https' or remote.hostname not in {'agentrouter.org', 'co.agentrouter.org'}
+                or remote.username or remote.password or remote.port not in {None, 443}
+                or remote.path.rstrip('/') != '/v1' or remote.query or remote.fragment):
+            raise ValueError('Agent Router URL must be an HTTPS /v1 endpoint on agentrouter.org')
         self.data = Path(self.data).resolve()
         self.credentials = Path(self.credentials).expanduser().resolve()
         import re
@@ -47,6 +64,14 @@ class Config:
     @classmethod
     def env(cls):
         load_dotenv()
+        router_key = os.getenv('AGENTROUTER_API_KEY','').strip()
+        key_file = Path(os.getenv('AGENTROUTER_API_KEY_FILE', str(Path(__file__).resolve().parent.parent/'AGENTROUTER_API_KEY.txt')))
+        if not router_key and key_file.is_file():
+            router_key = key_file.read_text().strip()
+            if router_key.startswith('AGENTROUTER_API_KEY='):
+                from dotenv import dotenv_values
+                router_key = dotenv_values(key_file).get('AGENTROUTER_API_KEY','')
+
         names = {"scan_seconds":"SCAN_SECONDS", "timeout":"REQUEST_TIMEOUT", "job_seconds":"JOB_SECONDS",
                  "max_file_mb":"MAX_FILE_MB", "max_pages":"MAX_PAGES", "context":"CONTEXT",
                  "output_tokens":"OUTPUT_TOKENS", "threads":"THREADS", "port":"PORT"}
@@ -57,4 +82,10 @@ class Config:
                    ollama=os.getenv("HR_OLLAMA_URL", "http://127.0.0.1:11434"),
                    ocr_language=os.getenv("HR_OCR_LANGUAGE","eng"),
                    hr_principals=tuple(x.strip().lower() for x in os.getenv("HR_ALLOWED_PRINCIPALS", "").split(",") if x.strip()),
+                   provider=os.getenv('HR_MODEL_PROVIDER','ollama'),
+                   router_url=os.getenv('AGENTROUTER_BASE_URL','https://agentrouter.org/v1'),
+                   router_key=router_key,
+                   codex_binary=os.getenv("HR_CODEX_BINARY", "/usr/lib/chatgpt/resources/codex"),
+                   router_max_turns=int(os.getenv("HR_ROUTER_MAX_TURNS", "6")),
+                   router_daily_requests=int(os.getenv("HR_ROUTER_DAILY_REQUESTS", "12")),
                    model=os.getenv("HR_MODEL", ""), embed_model=os.getenv("HR_EMBED_MODEL", ""), **vals)

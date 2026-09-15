@@ -5,8 +5,13 @@ from .database import audit,dirty
 ACTIONS = {'confirm_spam','dismiss','restore','retry'}
 
 def decide(db,app_id,action,reason,actor,expiry_days=90):
-    if action not in ACTIONS or not reason.strip() or not actor.strip():
-        raise ValueError('Provide an allowed action, reason and HR actor')
+    if action not in ACTIONS:
+        raise ValueError('Choose a valid review action')
+    if not isinstance(actor,str) or not actor.strip():
+        raise ValueError('Enter your name in the review form')
+    if not isinstance(reason,str) or not reason.strip():
+        raise ValueError('Enter a reason for this decision')
+    actor,reason=actor.strip(),reason.strip()
     if not 1<=expiry_days<=365:
         raise ValueError('Blacklist review/expiry must be within 1–365 days')
     with db.tx() as conn:

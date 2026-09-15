@@ -7,7 +7,7 @@ import time
 from flask import Flask,abort,jsonify,render_template,request,send_file,session
 from .config import Config
 from .database import DB
-from .ollama_client import Ollama
+from .model_client import create_model
 from .scoring import ranked
 from . import applicant_search,rubric,review,reports
 
@@ -19,7 +19,7 @@ def create_app(config=None,db=None,ollama=None):
             from .demo import SyntheticModel
             ollama = SyntheticModel()
         else:
-            ollama = Ollama(config)
+            ollama = create_model(config)
     app = Flask(__name__)
     secret_file = config.data/'session.key'
     try:
@@ -82,7 +82,9 @@ def create_app(config=None,db=None,ollama=None):
           active_index=db.setting('active_index'),
           service_heartbeat=db.setting('service_heartbeat'),worker_heartbeat=db.setting('worker_heartbeat'),
           missed_scan=bool(db.setting('last_successful_scan') and time.time()-db.setting('last_successful_scan')>config.scan_seconds*2),
-          model=config.model,model_ready=ollama.is_validated(db),
+          model=config.model,model_provider=config.provider,model_ready=ollama.is_validated(db),
+          model_turn_limit=config.router_max_turns if config.provider=='agentrouter' else 12,
+          hosted_requests_remaining=ollama.budget_remaining() if config.provider=='agentrouter' else None,
           drive_authorized=(config.data/'token.json').exists(),demo=db.setting('demo',False),
           jobs=db.rows('SELECT state,COUNT(*) AS count FROM jobs WHERE state!=\'superseded\' GROUP BY state'))
 

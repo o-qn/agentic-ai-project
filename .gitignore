@@ -10,3 +10,6 @@ token.json
 .test-venv/
 runtime/
 deployment/systemd/
+
+AGENTROUTER_API_KEY.txt
+output/agentrouter-trial/

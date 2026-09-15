@@ -24,7 +24,7 @@ def main():
     db=DB(config.data)
     from .drive_connector import Drive,authorize
     from .scanner import Scanner
-    from .ollama_client import Ollama
+    from .model_client import create_model
     try:
         if args.command=='init':
             print('Initialized private database:',config.data)
@@ -52,7 +52,7 @@ def main():
             result={'linux':sys.platform.startswith('linux'),'credentials_file':config.credentials.exists(),
                     'google_sign_in':(config.data/'token.json').exists(),'pdftoppm':bool(shutil.which('pdftoppm')),
                     'tesseract':bool(shutil.which('tesseract')),'model':config.model or '(not configured)',
-                    'embedding_model':config.embed_model or '(not configured)','cpu_only':True}
+                    'embedding_model':config.embed_model or '(not configured)','assessment_provider':config.provider,'assessment_model':config.model,'embeddings_provider':'ollama','router_key_configured':bool(config.router_key)}
             try:
                 response=requests.get(config.ollama+'/api/tags',timeout=5)
                 response.raise_for_status()
@@ -79,12 +79,12 @@ def main():
 def model_check(config,db):
     """Exercise a real installed model against small labelled synthetic examples, twice."""
     from .demo import MemoryDrive,seed
-    from .ollama_client import Ollama
+    from .model_client import create_model
     from .job_queue import Worker
     from .scanner import Scanner
     from .schemas import Rubric
     import time
-    model=Ollama(config)
+    model=create_model(config)
     validation_key=model.validation_key()
     # A failed rerun must revoke this exact model/configuration's old acceptance.
     db.set(validation_key,False)

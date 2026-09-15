@@ -6,7 +6,7 @@ from .database import DB
 from .drive_connector import Drive
 from .scanner import Scanner
 from .job_queue import Worker
-from .ollama_client import Ollama
+from .model_client import create_model
 from . import applicant_search,reports
 
 def following_tick(scheduled,now,interval):
@@ -18,11 +18,14 @@ def worker_process(config,stop):
     # only sets an event and cannot interrupt a hung request during forced shutdown.
     signal.signal(signal.SIGTERM,signal.SIG_DFL)
     db = DB(config.data)
-    worker = Worker(config,db,Drive(config),Ollama(config))
+    worker = Worker(config,db,Drive(config),create_model(config))
     while not stop.is_set():
         db.set('worker_heartbeat',time.time())
         if not db.setting('automatic',False):
             stop.wait(1)
+            continue
+        if config.provider == 'agentrouter' and worker.ollama.budget_remaining() == 0:
+            db.set('automatic', False)
             continue
         if worker.tick():
             continue
