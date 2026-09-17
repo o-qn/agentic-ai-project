@@ -1,0 +1,247 @@
+{
+  "max_chars": 1600,
+  "section_budget": 160,
+  "note": "hybrid uses an illustrative offline embedder, not the production embedder",
+  "fixtures": {
+    "identity-variation.txt": {
+      "source_chars": 199,
+      "fixed": {
+        "chunks": 1,
+        "exact_partition": true,
+        "min_chars": 199,
+        "mean_chars": 199,
+        "max_chars": 199,
+        "over_max": 0,
+        "headed_chunks": 0
+      },
+      "structure": {
+        "chunks": 1,
+        "exact_partition": true,
+        "min_chars": 199,
+        "mean_chars": 199,
+        "max_chars": 199,
+        "over_max": 0,
+        "headed_chunks": 0
+      },
+      "hybrid": {
+        "chunks": 1,
+        "exact_partition": true,
+        "min_chars": 199,
+        "mean_chars": 199,
+        "max_chars": 199,
+        "over_max": 0,
+        "headed_chunks": 0
+      }
+    },
+    "joke.txt": {
+      "source_chars": 69,
+      "fixed": {
+        "chunks": 1,
+        "exact_partition": true,
+        "min_chars": 69,
+        "mean_chars": 69,
+        "max_chars": 69,
+        "over_max": 0,
+        "headed_chunks": 0
+      },
+      "structure": {
+        "chunks": 1,
+        "exact_partition": true,
+        "min_chars": 69,
+        "mean_chars": 69,
+        "max_chars": 69,
+        "over_max": 0,
+        "headed_chunks": 0
+      },
+      "hybrid": {
+        "chunks": 1,
+        "exact_partition": true,
+        "min_chars": 69,
+        "mean_chars": 69,
+        "max_chars": 69,
+        "over_max": 0,
+        "headed_chunks": 0
+      }
+    },
+    "long.txt": {
+      "source_chars": 11533,
+      "fixed": {
+        "chunks": 8,
+        "exact_partition": true,
+        "min_chars": 333,
+        "mean_chars": 1441.6,
+        "max_chars": 1600,
+        "over_max": 0,
+        "headed_chunks": 0
+      },
+      "structure": {
+        "chunks": 8,
+        "exact_partition": true,
+        "min_chars": 380,
+        "mean_chars": 1441.6,
+        "max_chars": 1596,
+        "over_max": 0,
+        "headed_chunks": 0
+      },
+      "hybrid": {
+        "chunks": 8,
+        "exact_partition": true,
+        "min_chars": 380,
+        "mean_chars": 1441.6,
+        "max_chars": 1596,
+        "over_max": 0,
+        "headed_chunks": 0
+      }
+    },
+    "normal.txt": {
+      "source_chars": 133,
+      "fixed": {
+        "chunks": 1,
+        "exact_partition": true,
+        "min_chars": 133,
+        "mean_chars": 133,
+        "max_chars": 133,
+        "over_max": 0,
+        "headed_chunks": 0
+      },
+      "structure": {
+        "chunks": 1,
+        "exact_partition": true,
+        "min_chars": 133,
+        "mean_chars": 133,
+        "max_chars": 133,
+        "over_max": 0,
+        "headed_chunks": 0
+      },
+      "hybrid": {
+        "chunks": 1,
+        "exact_partition": true,
+        "min_chars": 133,
+        "mean_chars": 133,
+        "max_chars": 133,
+        "over_max": 0,
+        "headed_chunks": 0
+      }
+    },
+    "prompt-injection.txt": {
+      "source_chars": 92,
+      "fixed": {
+        "chunks": 1,
+        "exact_partition": true,
+        "min_chars": 92,
+        "mean_chars": 92,
+        "max_chars": 92,
+        "over_max": 0,
+        "headed_chunks": 0
+      },
+      "structure": {
+        "chunks": 1,
+        "exact_partition": true,
+        "min_chars": 92,
+        "mean_chars": 92,
+        "max_chars": 92,
+        "over_max": 0,
+        "headed_chunks": 0
+      },
+      "hybrid": {
+        "chunks": 1,
+        "exact_partition": true,
+        "min_chars": 92,
+        "mean_chars": 92,
+        "max_chars": 92,
+        "over_max": 0,
+        "headed_chunks": 0
+      }
+    },
+    "short.txt": {
+      "source_chars": 24,
+      "fixed": {
+        "chunks": 1,
+        "exact_partition": true,
+        "min_chars": 24,
+        "mean_chars": 24,
+        "max_chars": 24,
+        "over_max": 0,
+        "headed_chunks": 0
+      },
+      "structure": {
+        "chunks": 1,
+        "exact_partition": true,
+        "min_chars": 24,
+        "mean_chars": 24,
+        "max_chars": 24,
+        "over_max": 0,
+        "headed_chunks": 0
+      },
+      "hybrid": {
+        "chunks": 1,
+        "exact_partition": true,
+        "min_chars": 24,
+        "mean_chars": 24,
+        "max_chars": 24,
+        "over_max": 0,
+        "headed_chunks": 0
+      }
+    },
+    "synthetic-structured.txt": {
+      "source_chars": 2295,
+      "fixed": {
+        "chunks": 2,
+        "exact_partition": true,
+        "min_chars": 695,
+        "mean_chars": 1147.5,
+        "max_chars": 1600,
+        "over_max": 0,
+        "headed_chunks": 0
+      },
+      "structure": {
+        "chunks": 7,
+        "exact_partition": true,
+        "min_chars": 21,
+        "mean_chars": 327.9,
+        "max_chars": 1571,
+        "over_max": 0,
+        "headed_chunks": 6
+      },
+      "hybrid": {
+        "chunks": 7,
+        "exact_partition": true,
+        "min_chars": 21,
+        "mean_chars": 327.9,
+        "max_chars": 1571,
+        "over_max": 0,
+        "headed_chunks": 6
+      }
+    },
+    "synthetic-flat.txt": {
+      "source_chars": 10216,
+      "fixed": {
+        "chunks": 7,
+        "exact_partition": true,
+        "min_chars": 616,
+        "mean_chars": 1459.4,
+        "max_chars": 1600,
+        "over_max": 0,
+        "headed_chunks": 0
+      },
+      "structure": {
+        "chunks": 8,
+        "exact_partition": true,
+        "min_chars": 15,
+        "mean_chars": 1277,
+        "max_chars": 1600,
+        "over_max": 0,
+        "headed_chunks": 0
+      },
+      "hybrid": {
+        "chunks": 8,
+        "exact_partition": true,
+        "min_chars": 15,
+        "mean_chars": 1277,
+        "max_chars": 1600,
+        "over_max": 0,
+        "headed_chunks": 0
+      }
+    }
+  }
+}

@@ -12,6 +12,7 @@ import zipfile
 import csv
 import io
 import signal
+from . import chunking
 
 class NeedsReview(ValueError):
     pass
@@ -22,17 +23,14 @@ def contacts(text):
     emails = list(dict.fromkeys(re.findall(r'[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}',text)))
     return {'name':name.group(1).strip() if name else None,'emails':emails[:10], 'identity_verified':False}
 
-def sections_from_pages(pages):
-    result = []
-    for page_num,text in pages:
-        # Fixed chunks with exact character offsets; no silent truncation.
-        for start in range(0,len(text),1600):
-            part = text[start:start+1600]
-            if part.strip():
-                result.append({'id':f'p{page_num}-{start}','location':f'page/part {page_num}, characters {start}–{start+len(part)}','text':part})
+def sections_from_pages(pages,strategy=None):
+    # Structure-aware chunks with exact character offsets: the concatenated section
+    # text reproduces each page exactly (no silent truncation) and recognised heading
+    # context is kept out of the quotation text (see hr_agent/chunking.py).
+    result = chunking.chunk(pages,strategy or chunking.DEFAULT_STRATEGY)
     if not result:
         raise NeedsReview('No readable text was extracted')
-    if len(result)>160:
+    if len(result)>chunking.SECTION_BUDGET:
         raise NeedsReview('Document exceeds complete-review section budget')
     return result
 
@@ -117,7 +115,8 @@ def extract_inner(path,max_pages,ocr_language='eng'):
     else:
         raise NeedsReview('Unsupported CV format; supported: PDF, DOCX, UTF-8 TXT')
     sections = sections_from_pages(pages)
-    return {'sections':sections,'contact':contacts('\n'.join(text for _,text in pages))}
+    return {'sections':sections,'contact':contacts('\n'.join(text for _,text in pages)),
+            'strategy':chunking.strategy_label(chunking.DEFAULT_STRATEGY)}
 
 def extract(path,config):
     process=subprocess.Popen([sys.executable,'-m','hr_agent.document_reader',str(path),str(config.max_pages),config.ocr_language],

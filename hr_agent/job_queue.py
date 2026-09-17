@@ -85,8 +85,8 @@ class Worker:
             with self.db.tx() as conn:
                 if not self.current(conn,job):
                     return
-                conn.execute('UPDATE applications SET sections=?,contact=? WHERE id=?',
-                             (json.dumps(result['sections']),json.dumps(result['contact']),app['id']))
+                conn.execute('UPDATE applications SET sections=?,contact=?,chunk_strategy=? WHERE id=?',
+                             (json.dumps(result['sections']),json.dumps(result['contact']),result.get('strategy'),app['id']))
             self.checkpoint(job,'assess')
         elif job['step']=='assess':
             if role['paused'] or not role['rubric_id']:
