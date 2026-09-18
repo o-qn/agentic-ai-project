@@ -18,6 +18,8 @@
         <select id="role" aria-label="Select role">
           <option>No roles yet</option>
         </select>
+        <button id="upload">Upload CV</button>
+        <input type="file" id="cv-file" accept=".pdf,.docx,.txt" aria-label="Choose a CV file to upload" hidden>
         <label>
           <input type="checkbox" id="automatic"> Auto process</label>
         <button id="check">Check Drive now</button>
@@ -125,6 +127,13 @@
       <details id="blacklist">
         <summary>Document holds</summary>
         <div id="blacklist-list">
+        </div>
+      </details>
+      <details id="settings">
+        <summary>Settings &amp; usage</summary>
+        <div id="settings-summary" class="stats">
+        </div>
+        <div id="usage">
         </div>
       </details>
       <details>

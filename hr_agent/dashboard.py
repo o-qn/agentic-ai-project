@@ -4,6 +4,7 @@ import json
 import os
 import secrets
 import time
+from pathlib import Path
 from flask import Flask,abort,jsonify,render_template,request,send_file,session
 from .config import Config
 from .database import DB
@@ -11,7 +12,7 @@ from .model_client import create_model
 from .scoring import ranked
 from . import applicant_search,rubric,review,reports
 
-def create_app(config=None,db=None,ollama=None):
+def create_app(config=None,db=None,ollama=None,drive=None):
     config = config or Config.env()
     db = db or DB(config.data)
     if ollama is None:
@@ -20,6 +21,15 @@ def create_app(config=None,db=None,ollama=None):
             ollama = SyntheticModel()
         else:
             ollama = create_model(config)
+
+    def get_drive():
+        # Built lazily and only when a mutating route needs Drive, so the read-only
+        # dashboard still serves without Google credentials (and tests inject a double).
+        nonlocal drive
+        if drive is None:
+            from .drive_connector import Drive
+            drive = Drive(config)
+        return drive
     app = Flask(__name__)
     secret_file = config.data/'session.key'
     try:
@@ -42,6 +52,10 @@ def create_app(config=None,db=None,ollama=None):
             origin = request.headers.get('Origin')
             if origin and origin!=request.host_url.rstrip('/'):
                 abort(403,'Cross-origin mutation denied')
+        # CV uploads carry a real file; lift the tight JSON body cap for that route only,
+        # to the configured file-size limit plus a small margin for the multipart envelope.
+        if request.endpoint=='upload_cv':
+            request.max_content_length = config.max_file_mb*1024*1024 + 8192
 
     @app.after_request
     def headers(response):
@@ -87,6 +101,13 @@ def create_app(config=None,db=None,ollama=None):
           hosted_requests_remaining=ollama.budget_remaining() if config.provider=='agentrouter' else None,
           drive_authorized=(config.data/'token.json').exists(),demo=db.setting('demo',False),
           jobs=db.rows('SELECT state,COUNT(*) AS count FROM jobs WHERE state!=\'superseded\' GROUP BY state'))
+
+    @app.get('/api/usage')
+    def usage_report():
+        # Read-only. Embedding usage (from its own ledger) is reported separately
+        # from assessment usage; no dollar costs are synthesised.
+        from . import usage
+        return jsonify(usage.report(config,db,ollama))
 
     @app.post('/api/check')
     def check():
@@ -157,6 +178,39 @@ def create_app(config=None,db=None,ollama=None):
     @app.post('/api/roles/<role_id>/chat')
     def chat(role_id):
         return jsonify(applicant_search.answer(config,db,ollama,role_id,request.json['question'],request.json.get('application_ids')))
+
+    @app.post('/api/roles/<role_id>/upload')
+    def upload_cv(role_id):
+        # Deposit an HR-supplied CV into the role's Incoming CVs folder and let the
+        # normal scan discover it. Discovery is cheap; assessment still waits for Auto
+        # process, so this never triggers paid inference or bulk processing on its own.
+        role = db.one('SELECT * FROM roles WHERE id=? AND active=1',(role_id,))
+        if not role:
+            abort(404)
+        upload = request.files.get('file')
+        if not upload or not upload.filename:
+            raise ValueError('Choose a CV file to upload')
+        name = Path(upload.filename).name
+        if Path(name).suffix.lower() not in {'.pdf','.docx','.txt'}:
+            raise ValueError('Unsupported CV format; upload a PDF, DOCX or UTF-8 TXT file')
+        limit = config.max_file_mb*1024*1024
+        data = upload.read(limit+1)
+        if len(data)>limit:
+            raise ValueError('File exceeds the configured size limit')
+        if not data:
+            raise ValueError('The uploaded file is empty')
+        folders = json.loads(role['folders'] or '{}')
+        incoming = folders.get('Incoming CVs')
+        if not incoming:
+            raise ValueError('This role has no Incoming CVs folder yet; run a scan first')
+        from .drive_connector import DriveError
+        try:
+            get_drive().upload_cv(incoming,name,data)
+        except DriveError as exc:
+            # Sign-in required, or a folder that is not HR-private: surface the reason.
+            raise ValueError(str(exc))
+        db.set('check_now',True)
+        return jsonify(uploaded=True,filename=name)
 
     @app.get('/api/applications/<int:app_id>/source')
     def local_source(app_id):

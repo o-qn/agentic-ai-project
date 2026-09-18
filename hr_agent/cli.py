@@ -12,7 +12,7 @@ from .database import DB
 def main():
     os.umask(0o077)
     parser=argparse.ArgumentParser(description='Linux-only, local HR screening')
-    parser.add_argument('command',choices=['init','auth','setup-drive','scan','service','serve','doctor','model-check','retry','demo','poc'])
+    parser.add_argument('command',choices=['init','auth','setup-drive','scan','service','serve','doctor','model-check','retry','demo','poc','pg-migrate','pg-validate','pg-rollback'])
     parser.add_argument('--data',type=Path,help='Override isolated application data directory')
     parser.add_argument('--port',type=int)
     args=parser.parse_args()
@@ -52,7 +52,10 @@ def main():
             result={'linux':sys.platform.startswith('linux'),'credentials_file':config.credentials.exists(),
                     'google_sign_in':(config.data/'token.json').exists(),'pdftoppm':bool(shutil.which('pdftoppm')),
                     'tesseract':bool(shutil.which('tesseract')),'model':config.model or '(not configured)',
-                    'embedding_model':config.embed_model or '(not configured)','assessment_provider':config.provider,'assessment_model':config.model,'embeddings_provider':'ollama','router_key_configured':bool(config.router_key)}
+                    'embedding_model':config.embed_model or '(not configured)','assessment_provider':config.provider,'assessment_model':config.model,
+                    'embeddings_provider':config.embed_provider,
+                    'hosted_embedding_model':config.embed_hosted_model or '(not configured)',
+                    'hosted_embedding_key_configured':bool(config.embed_key),'router_key_configured':bool(config.router_key)}
             try:
                 response=requests.get(config.ollama+'/api/tags',timeout=5)
                 response.raise_for_status()

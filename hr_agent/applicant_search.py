@@ -5,6 +5,8 @@ import re
 import time
 from .scoring import ranked
 from .reports import cv_link
+from .embedding import make_embedder
+from . import pgvector
 
 STOP = set('who which candidates candidate applicants applicant applications application have has with experience evidence of in and or the a an is are show me all for role skills knows know compare why ranked rank score scores top second first third list please show tell find this that these those two three completed review queued duplicate removed failed needs pending supported partially partial not demonstrated'.split())
 
@@ -12,8 +14,9 @@ def index_one(config,db,ollama):
     with db.lease('indexer') as acquired:
         if not acquired:
             return False
+        embedder=make_embedder(config,ollama)
         try:
-            embedding_identity=ollama.identity(config.embed_model)
+            embedding_identity=embedder.identity()
         except Exception as exc:
             db.set('index_configuration_error',{'type':type(exc).__name__,'at':time.time()})
             return False
@@ -35,7 +38,7 @@ def index_one(config,db,ollama):
                 db.set('active_index',{'application_id':app['id'],'filename':app['filename'],
                        'section':position+1,'sections':len(section_list),'started':time.time()})
                 try:
-                    vector = ollama.embed(section['text'])
+                    vector = embedder.embed(section['text'])
                 finally:
                     db.set('active_index',None)
                 if not vector or not all(isinstance(v,(int,float)) and math.isfinite(v) for v in vector):
@@ -65,14 +68,35 @@ def cosine(a,b):
     denom = math.sqrt(sum(v*v for v in a)*sum(v*v for v in b))
     return sum(x*y for x,y in zip(a,b))/denom if denom else 0
 
+def _semantic_matches(config,db,role_id,query,embedding_identity,application_ids=None,k=8):
+    """Nearest passages for a query, filtered by role/applicant/active/version/model.
+
+    Uses the pgvector mirror only when it is configured AND a passing validation enabled it;
+    any Postgres error falls back to the live SQLite cosine path, which stays authoritative.
+    Returns passage matches only — rubric scores come from the separate ranked() path.
+    """
+    if pgvector.enabled(config,db):
+        try:
+            return pgvector.semantic_search(config,db,role_id,query,embedding_identity,application_ids,k)
+        except Exception as exc:
+            db.set('pg_search_error',{'type':type(exc).__name__,'at':time.time()})
+    chunks = db.rows('''SELECT c.* FROM chunks c JOIN applications a ON a.id=c.application_id
+      WHERE c.role_id=? AND c.version=a.version AND a.active=1 AND a.duplicate_of IS NULL
+      AND c.model=?''',(role_id,embedding_identity))
+    if application_ids is not None:
+        allowed=set(application_ids)
+        chunks=[c for c in chunks if c['application_id'] in allowed]
+    return sorted(chunks,key=lambda c:cosine(query,json.loads(c['embedding'])),reverse=True)[:k]
+
 def answer(config,db,ollama,role_id,question,application_ids=None):
     if not question.strip() or len(question)>1000:
         raise ValueError('Question must contain 1–1000 characters')
     role = db.one('SELECT * FROM roles WHERE id=? AND active=1',(role_id,))
     if not role:
         raise ValueError('Unknown role')
+    embedder=make_embedder(config,ollama)
     try:
-        embedding_identity=ollama.identity(config.embed_model)
+        embedding_identity=embedder.identity()
     except Exception:
         embedding_identity=None
     apps = db.rows('SELECT * FROM applications WHERE role_id=? AND active=1',(role_id,))
@@ -162,11 +186,8 @@ def answer(config,db,ollama,role_id,question,application_ids=None):
                           'cv_url':cv_link(app['file_id']),'citations':citations,'findings':findings})
     if not cards and not rank_query and not selected and not list_query and not requested_status and not level_filter:
         try:
-            query = ollama.embed(question,purpose='query')
-            chunks = db.rows('''SELECT c.* FROM chunks c JOIN applications a ON a.id=c.application_id
-              WHERE c.role_id=? AND c.version=a.version AND a.active=1 AND a.duplicate_of IS NULL
-              AND c.model=?''',(role_id,embedding_identity))
-            matches = sorted(chunks,key=lambda c:cosine(query,json.loads(c['embedding'])),reverse=True)[:8]
+            query = embedder.embed(question,purpose='query')
+            matches = _semantic_matches(config,db,role_id,query,embedding_identity)
             semantic = bool(matches)
             by_application={}
             for chunk in matches:

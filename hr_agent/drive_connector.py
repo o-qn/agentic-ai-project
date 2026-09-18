@@ -12,7 +12,11 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 
 SCOPES = ['https://www.googleapis.com/auth/drive']
 BASE = 'https://www.googleapis.com/drive/v3/files'
+UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files'
 FIELDS = 'id,name,mimeType,modifiedTime,md5Checksum,size,parents,trashed,appProperties,version'
+CV_MIME = {'.pdf':'application/pdf',
+           '.docx':'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+           '.txt':'text/plain'}
 
 class DriveError(RuntimeError):
     pass
@@ -161,6 +165,33 @@ class Drive:
         confirmed = self.get(file_id)
         if confirmed.get('appProperties',{}).get('hrRevision') != str(revision):
             raise DriveError('Report revision confirmation failed')
+        return confirmed
+
+    def upload_cv(self,parent,filename,data):
+        """Place an HR-supplied CV into a role's Incoming CVs folder for ordinary discovery.
+
+        Stamped appProperties.hrUpload for provenance, but deliberately NOT hrRole:
+        the scanner skips hrRole files as generated reports, so a CV must not carry it
+        or it would never be discovered. Refuses a public/domain-wide folder and never
+        alters sharing, mirroring upload_report's privacy stance for sensitive content.
+        """
+        self.assert_private(self.config.root)
+        self.assert_private(parent)
+        limit = self.config.max_file_mb*1024*1024
+        if len(data)>limit:
+            raise ValueError('File exceeds configured size limit')
+        file_id = self.reserve_id()
+        mime = CV_MIME.get(Path(filename).suffix.lower(),'application/octet-stream')
+        metadata = {'id':file_id,'name':filename,'parents':[parent],'appProperties':{'hrUpload':'1'}}
+        boundary = 'hr_agent_multipart_boundary'
+        body = (f'--{boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'.encode()
+                +json.dumps(metadata).encode()+f'\r\n--{boundary}\r\nContent-Type: {mime}\r\n\r\n'.encode()
+                +data+f'\r\n--{boundary}--\r\n'.encode())
+        self.request('POST',UPLOAD,data=body,headers={'Content-Type':f'multipart/related; boundary={boundary}'},
+                     params={'uploadType':'multipart','supportsAllDrives':'true'})
+        confirmed = self.get(file_id)
+        if parent not in confirmed.get('parents',[]) or confirmed.get('appProperties',{}).get('hrRole'):
+            raise DriveError('Upload could not be confirmed in the Incoming CVs folder')
         return confirmed
 
     def move(self,file_id,target):

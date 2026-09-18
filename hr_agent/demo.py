@@ -23,6 +23,7 @@ class MemoryDrive:
         self.counter=0
         self.moves=[]
         self.uploads=[]
+        self.cv_uploads=[]
         self.fail={}
         self.delay=0
         self.add('root','Recruitment',None,mime=FOLDER)
@@ -74,6 +75,15 @@ class MemoryDrive:
             self.files[file_id]['parents']=[target]
             self.moves.append((file_id,target))
         self.maybe('move_after_success')
+    def upload_cv(self,parent,filename,data):
+        self.maybe('upload_cv')
+        self.counter+=1
+        file_id='cv-upload-'+str(self.counter)
+        self.add(file_id,filename,parent,binary=data)
+        self.files[file_id]['appProperties']={'hrUpload':'1'}
+        self.cv_uploads.append((file_id,filename))
+        self.maybe('upload_cv_after_success')
+        return self.get(file_id)
 
 class SyntheticModel:
     """Scripted test oracle; not an AI model and cannot qualify a real model for deployment."""
