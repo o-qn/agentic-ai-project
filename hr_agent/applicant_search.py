@@ -89,7 +89,7 @@ def _semantic_matches(config,db,role_id,query,embedding_identity,application_ids
     return sorted(chunks,key=lambda c:cosine(query,json.loads(c['embedding'])),reverse=True)[:k]
 
 def answer(config,db,ollama,role_id,question,application_ids=None):
-    if not question.strip() or len(question)>1000:
+    if not isinstance(question,str) or not question.strip() or len(question)>1000:
         raise ValueError('Question must contain 1–1000 characters')
     role = db.one('SELECT * FROM roles WHERE id=? AND active=1',(role_id,))
     if not role:
@@ -108,7 +108,10 @@ def answer(config,db,ollama,role_id,question,application_ids=None):
     lower = question.lower()
     list_query=bool(re.search(r'\b(list|show)\b.*\b(all )?(applicants|candidates|applications)\b',lower))
     requested_status=next((status for status in ['completed','review','queued','duplicate','failed'] if re.search(r'\b'+status+r'\b',lower)),None)
-    failed_ids={row['application_id'] for row in db.rows("SELECT application_id FROM jobs WHERE state='failed'")}
+    failed_ids={row['application_id'] for row in db.rows("""SELECT j.application_id FROM jobs j
+      JOIN applications a ON a.id=j.application_id
+      JOIN roles r ON r.id=a.role_id
+      WHERE j.state='failed' AND a.version=j.version AND j.rubric_id=COALESCE(r.rubric_id,0)""")}
     rank_query = bool(re.search(r'\b(rank|ranked|score|scores|compare|top)\b',lower))
     ordinal_requested=bool(re.search(r'\b(first|second|third)\b',lower)) and rank_query
     if re.search(r'\bsecond\b',lower) and rank_query and not selected:
@@ -187,11 +190,19 @@ def answer(config,db,ollama,role_id,question,application_ids=None):
     if not cards and not rank_query and not selected and not list_query and not requested_status and not level_filter:
         try:
             query = embedder.embed(question,purpose='query')
-            matches = _semantic_matches(config,db,role_id,query,embedding_identity)
+            # Preserve an explicit applicant scope during semantic fallback;
+            # lexical misses must not widen a targeted question to the whole role.
+            matches = _semantic_matches(config,db,role_id,query,embedding_identity,
+                                        application_ids=selected or None)
             semantic = bool(matches)
             by_application={}
             for chunk in matches:
-                app = scope[chunk['application_id']]
+                # A validated Postgres mirror can lag behind a local reset or
+                # source removal. Ignore stale passages instead of dropping the
+                # entire answer through a KeyError.
+                app = scope.get(chunk['application_id'])
+                if not app:
+                    continue
                 if app['id'] not in by_application:
                     ranking=rankings.get(app['id'])
                     by_application[app['id']]={'application_id':app['id'],'name':json.loads(app['contact']).get('name') or 'Name not provided',

@@ -12,7 +12,7 @@ def decide(db,app_id,action,reason,actor,expiry_days=90):
     if not isinstance(reason,str) or not reason.strip():
         raise ValueError('Enter a reason for this decision')
     actor,reason=actor.strip(),reason.strip()
-    if not 1<=expiry_days<=365:
+    if isinstance(expiry_days,bool) or not isinstance(expiry_days,int) or not 1<=expiry_days<=365:
         raise ValueError('Blacklist review/expiry must be within 1–365 days')
     with db.tx() as conn:
         app = conn.execute('SELECT * FROM applications WHERE id=? AND active=1',(app_id,)).fetchone()
@@ -29,21 +29,22 @@ def decide(db,app_id,action,reason,actor,expiry_days=90):
         else:
             if action=='restore':
                 conn.execute("UPDATE blacklist SET active=0 WHERE kind='document' AND identifier=?",(app['hash'],))
-            if action=='retry':
-                conn.execute("UPDATE jobs SET state='queued',attempts=0,next_try=0 WHERE application_id=? AND state='failed'",(app_id,))
-                conn.execute("UPDATE applications SET index_status='pending',index_attempts=0,index_next=0 WHERE id=?",(app_id,))
-            else:
-                conn.execute("UPDATE applications SET status='queued',review_dismissed=1,review_reason=NULL,duplicate_of=NULL WHERE id=?",(app_id,))
-                # Preserve completed assessments; dismissing a model review starts a fresh bounded attempt.
-                existing = conn.execute('SELECT id FROM assessments WHERE application_id=? AND version=? AND rubric_id=?',
-                                        (app_id,app['version'],role['rubric_id'])).fetchone()
-                step = 'report' if existing else ('assess' if app['sections'] else 'download')
-                if existing:
-                    conn.execute("UPDATE applications SET status='completed' WHERE id=?",(app_id,))
-                conn.execute('''INSERT INTO jobs(application_id,version,rubric_id,step,updated) VALUES(?,?,?,?,?)
-                 ON CONFLICT(application_id,version,rubric_id) DO UPDATE SET state='queued',step=excluded.step,
-                 attempts=0,next_try=0,agent_state='{}',generation=jobs.generation+1,updated=excluded.updated''',
-                             (app_id,app['version'],role['rubric_id'] or 0,step,time.time()))
+            # Every non-spam decision must leave the document actionable. In
+            # particular, a review job is normally already `done` after its
+            # move to Needs Review, so retrying only failed jobs is a no-op.
+            conn.execute("UPDATE applications SET status='queued',review_dismissed=1,review_reason=NULL,duplicate_of=NULL WHERE id=?",(app_id,))
+            conn.execute("UPDATE applications SET index_status='pending',index_attempts=0,index_next=0 WHERE id=?",(app_id,))
+            # Preserve a completed assessment for dismiss/restore, but retry
+            # still resumes at the current durable checkpoint when possible.
+            existing = conn.execute('SELECT id FROM assessments WHERE application_id=? AND version=? AND rubric_id=?',
+                                    (app_id,app['version'],role['rubric_id'])).fetchone()
+            step = 'report' if existing else ('assess' if app['sections'] else 'download')
+            if existing:
+                conn.execute("UPDATE applications SET status='completed' WHERE id=?",(app_id,))
+            conn.execute('''INSERT INTO jobs(application_id,version,rubric_id,step,updated) VALUES(?,?,?,?,?)
+             ON CONFLICT(application_id,version,rubric_id) DO UPDATE SET state='queued',step=excluded.step,
+             attempts=0,next_try=0,agent_state='{}',generation=jobs.generation+1,updated=excluded.updated''',
+                         (app_id,app['version'],role['rubric_id'] or 0,step,time.time()))
         revision = dirty(conn,app['role_id'])
         conn.execute('UPDATE applications SET required_revision=? WHERE id=?',(revision,app_id))
         conn.execute('INSERT INTO review_decisions(application_id,action,reason,actor,created) VALUES(?,?,?,?,?)',
@@ -51,7 +52,7 @@ def decide(db,app_id,action,reason,actor,expiry_days=90):
         audit(conn,'hr_review_decision',app_id,{'action':action,'actor':actor,'reason':reason})
 
 def restore_entry(db,entry_id,actor):
-    if not actor.strip():
+    if not isinstance(actor,str) or not actor.strip():
         raise ValueError('HR actor required')
     with db.tx() as conn:
         entry = conn.execute('SELECT * FROM blacklist WHERE id=?',(entry_id,)).fetchone()

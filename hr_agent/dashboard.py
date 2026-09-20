@@ -116,13 +116,12 @@ def create_app(config=None,db=None,ollama=None,drive=None):
 
     @app.post('/api/reset')
     def reset():
-        if request.json.get('confirm') is not True:
+        body = request.get_json(silent=True) or {}
+        if body.get('confirm') is not True:
             raise ValueError('Reset requires explicit confirmation')
         # This endpoint intentionally calls only the local database. It never
         # constructs the Drive connector or mutates remote files.
         result = db.reset_terminal_jobs()
-        db.set('active_job',None)
-        db.set('active_index',None)
         return jsonify(reset=True,**result)
 
     @app.post('/api/automatic')

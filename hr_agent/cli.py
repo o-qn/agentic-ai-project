@@ -66,8 +66,8 @@ def main():
                 result['ollama']='Unavailable'
             print(json.dumps(result,indent=2))
         elif args.command=='retry':
-            db.execute("UPDATE jobs SET state='queued',attempts=0,next_try=0 WHERE state IN ('failed','waiting_model')")
-            db.execute("UPDATE applications SET index_status='pending',index_attempts=0,index_next=0 WHERE index_status='failed'")
+            db.execute("UPDATE jobs SET state='queued',attempts=0,next_try=0 WHERE state IN ('failed','retry','waiting_model')")
+            db.execute("UPDATE applications SET index_status='pending',index_attempts=0,index_next=0 WHERE index_status IN ('failed','retry')")
             for row in db.rows("SELECT key FROM settings WHERE key LIKE 'report_retry:%'"):
                 db.set(row['key'],{'attempts':0,'next':0})
             print('Failed stages requeued at saved checkpoints.')

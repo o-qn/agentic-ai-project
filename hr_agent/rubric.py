@@ -40,10 +40,10 @@ def enable_poc(db):
 
 def approve(db,role_id,body,actor,jd_hash,plan):
     rubric = Rubric.model_validate(body)
-    if plan != 'reassess_all' or not actor.strip():
+    if plan != 'reassess_all' or not isinstance(actor,str) or not actor.strip():
         raise ValueError('Approval requires an HR actor and reassess_all plan')
     with db.tx() as conn:
-        role = conn.execute('SELECT * FROM roles WHERE id=?',(role_id,)).fetchone()
+        role = conn.execute('SELECT * FROM roles WHERE id=? AND active=1',(role_id,)).fetchone()
         if not role or role['jd_error'] or not role['jd'] or jd_hash != role['jd_hash']:
             raise ValueError('Job description missing or changed; refresh before approval')
         cur = conn.execute('INSERT INTO rubrics(role_id,jd_hash,body,approved_by,approved_at,created) VALUES(?,?,?,?,?,?)',
@@ -62,7 +62,7 @@ def approve(db,role_id,body,actor,jd_hash,plan):
     return rubric_id
 
 def draft(db,role_id,ollama):
-    role = db.one('SELECT * FROM roles WHERE id=?',(role_id,))
+    role = db.one('SELECT * FROM roles WHERE id=? AND active=1',(role_id,))
     if not role or not role['jd']:
         raise ValueError('A job description is required')
     prompt = ('Draft only job-relevant, evidence-based criteria totaling 100. '

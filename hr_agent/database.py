@@ -83,6 +83,13 @@ class DB:
                 return {'applications': 0, 'jobs': 0}
             marks = ','.join('?' for _ in ids)
             job_count = conn.execute(f'SELECT COUNT(*) FROM jobs WHERE application_id IN ({marks})', ids).fetchone()[0]
+            # A live duplicate may still point at a terminal original. Break that
+            # reference before deleting the original so the foreign key remains
+            # valid and let its queued job continue as the canonical application.
+            conn.execute(f'''UPDATE applications
+                SET duplicate_of=NULL,
+                    status=CASE WHEN status='duplicate' THEN 'queued' ELSE status END
+                WHERE duplicate_of IN ({marks})''', ids)
             assessment_ids = [row[0] for row in conn.execute(
                 f'SELECT id FROM assessments WHERE application_id IN ({marks})', ids)]
             if assessment_ids:
