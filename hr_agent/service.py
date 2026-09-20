@@ -21,12 +21,30 @@ def worker_process(config,stop):
     worker = Worker(config,db,Drive(config),create_model(config))
     while not stop.is_set():
         db.set('worker_heartbeat',time.time())
-        if not db.setting('automatic',False):
-            stop.wait(1)
-            continue
-        if config.provider == 'agentrouter' and worker.ollama.budget_remaining() == 0:
-            db.set('automatic', False)
-            continue
+        automatic = db.setting('automatic',False)
+        pause = db.setting('automatic_pause')
+        if not automatic:
+            # A quota pause is an automatic state, not a user opt-out. Resume
+            # after the provider's UTC budget rolls over while preserving a
+            # deliberate manual disable (which clears automatic_pause).
+            remaining = worker.ollama.budget_remaining() if config.provider == 'agentrouter' else None
+            if (pause and pause.get('kind') == 'hosted_budget'
+                    and config.provider == 'agentrouter'
+                    and (remaining is None or remaining > 0)):
+                db.set('automatic',True)
+                db.set('automatic_pause',None)
+                automatic = True
+            else:
+                stop.wait(1)
+                continue
+        if config.provider == 'agentrouter':
+            remaining = worker.ollama.budget_remaining()
+            if remaining == 0:
+                db.set('automatic', False)
+                db.set('automatic_pause',{'kind':'hosted_budget','at':time.time()})
+                continue
+        if pause:
+            db.set('automatic_pause',None)
         if worker.tick():
             continue
         if applicant_search.index_one(config,db,worker.ollama):
@@ -79,10 +97,12 @@ def run(config):
                 stop.wait(1)
         finally:
             stop.set()
-            process.join(timeout=min(config.timeout+15,150))
+            # Interrupt an in-flight network/model request promptly so the
+            # systemd stop timeout cannot leave the scheduler failed for minutes.
+            process.join(timeout=15)
             if process.is_alive():
                 process.terminate()
-                process.join(timeout=10)
+                process.join(timeout=15)
             if process.is_alive():
                 process.kill()
                 process.join(timeout=5)

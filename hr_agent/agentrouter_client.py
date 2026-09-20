@@ -46,6 +46,8 @@ class AgentRouter(Ollama):
 
     def budget_remaining(self):
         path = self.config.data / 'router-budget.sqlite3'
+        if self.config.router_daily_requests == 0:
+            return None
         if not path.exists():
             return self.config.router_daily_requests
         with sqlite3.connect(path, timeout=5) as db:
@@ -59,7 +61,7 @@ class AgentRouter(Ollama):
     def _reserve(self):
         if self.max_requests is not None and self.requests_made >= self.max_requests:
             raise ValueError('Hosted trial request limit reached')
-        # Count attempts before launching; process restarts cannot reset the daily cap.
+        # Count attempts before launching; the ledger remains useful for usage reporting even when the local cap is unlimited.
         path = self.config.data / 'router-budget.sqlite3'
         fd = os.open(path, os.O_WRONLY | os.O_CREAT, 0o600)
         os.close(fd)
@@ -68,8 +70,8 @@ class AgentRouter(Ollama):
             db.execute('BEGIN IMMEDIATE')
             day = datetime.now(timezone.utc).date().isoformat()
             row = db.execute('SELECT requests FROM budget WHERE day=?', (day,)).fetchone()
-            if row and row[0] >= self.config.router_daily_requests:
-                raise ValueError('Hosted daily request limit reached; review usage before increasing HR_ROUTER_DAILY_REQUESTS')
+            if self.config.router_daily_requests and row and row[0] >= self.config.router_daily_requests:
+                raise ValueError('Hosted daily request limit reached; increase HR_ROUTER_DAILY_REQUESTS or set it to 0 for unlimited launches')
             db.execute('INSERT INTO budget VALUES (?,1) ON CONFLICT(day) DO UPDATE SET requests=requests+1', (day,))
         self.requests_made += 1
 

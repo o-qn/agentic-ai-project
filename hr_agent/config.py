@@ -23,7 +23,7 @@ class Config:
     router_key: str = field(default="", repr=False)
     codex_binary: str = "/usr/lib/chatgpt/resources/codex"
     router_max_turns: int = 6
-    router_daily_requests: int = 12
+    router_daily_requests: int = 0
     pg_url: str = field(default="", repr=False)
     pg_schema: str = "hr_vectors"
     scan_seconds: int = 300
@@ -53,8 +53,8 @@ class Config:
                 raise ValueError('Set HR_EMBED_HOSTED_MODEL when HR_EMBED_PROVIDER is voyage')
             if not 1 <= self.embed_batch <= 128 or not 1 <= self.embed_rpm <= 1000:
                 raise ValueError('Hosted embedding limits: batch 1–128, rpm 1–1000')
-        if not 1 <= self.router_max_turns <= 12 or not 1 <= self.router_daily_requests <= 1000:
-            raise ValueError("Hosted limits: turns 1–12, daily requests 1–1000")
+        if not 1 <= self.router_max_turns <= 12 or not 0 <= self.router_daily_requests <= 1000:
+            raise ValueError("Hosted limits: turns 1–12, daily requests 0–1000 (0 means unlimited)")
         if not Path(self.codex_binary).is_absolute():
             raise ValueError("HR_CODEX_BINARY must be an absolute path")
         remote = urlparse(self.router_url)
@@ -134,7 +134,7 @@ class Config:
                    router_key=router_key,
                    codex_binary=os.getenv("HR_CODEX_BINARY", "/usr/lib/chatgpt/resources/codex"),
                    router_max_turns=int(os.getenv("HR_ROUTER_MAX_TURNS", "6")),
-                   router_daily_requests=int(os.getenv("HR_ROUTER_DAILY_REQUESTS", "12")),
+                   router_daily_requests=int(os.getenv("HR_ROUTER_DAILY_REQUESTS", "0")),
                    embed_provider=os.getenv("HR_EMBED_PROVIDER","ollama"),
                    embed_hosted_model=os.getenv("HR_EMBED_HOSTED_MODEL",""),
                    embed_url=os.getenv("HR_EMBED_URL","https://api.voyageai.com/v1/embeddings"),

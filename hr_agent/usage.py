@@ -87,7 +87,7 @@ def assessment_summary(config, db, ollama):
             remaining = None
     return {'provider': config.provider, 'model': config.model, 'total': total, 'last_24h': last_24h,
             'last': last, 'by_model': db.rows('SELECT model, COUNT(*) AS count FROM assessments GROUP BY model ORDER BY count DESC'),
-            'daily_limit': config.router_daily_requests if config.provider == 'agentrouter' else None,
+            'daily_limit': (config.router_daily_requests if config.provider == 'agentrouter' and config.router_daily_requests else None),
             'remaining': remaining}
 
 

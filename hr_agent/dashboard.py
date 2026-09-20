@@ -91,7 +91,8 @@ def create_app(config=None,db=None,ollama=None,drive=None):
             active={**active,'filename':source['filename'] if source else None,
                     'turns':state.get('turns',0),'sections_read':len(state.get('seen',[]))}
         return jsonify(roles=db.rows('SELECT * FROM roles WHERE active=1 ORDER BY name'),
-          automatic=db.setting('automatic',False),poc_mode=db.setting('poc_mode',False),last_scan=db.setting('last_successful_scan'),
+          automatic=db.setting('automatic',False),automatic_pause=db.setting('automatic_pause'),
+          poc_mode=db.setting('poc_mode',False),last_scan=db.setting('last_successful_scan'),
           next_scan=db.setting('next_scan'),scan_error=db.setting('scan_error'),active_job=active,
           active_index=db.setting('active_index'),
           service_heartbeat=db.setting('service_heartbeat'),worker_heartbeat=db.setting('worker_heartbeat'),
@@ -130,7 +131,9 @@ def create_app(config=None,db=None,ollama=None,drive=None):
         if not isinstance(enabled,bool):
             raise ValueError('enabled must be true or false')
         db.set('automatic',enabled)
-        return jsonify(automatic=enabled)
+        if not enabled:
+            db.set('automatic_pause',None)
+        return jsonify(automatic=enabled,automatic_pause=db.setting('automatic_pause'))
 
     @app.get('/api/roles/<role_id>')
     def role_detail(role_id):

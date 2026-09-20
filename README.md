@@ -239,7 +239,7 @@ HR_MODEL=deepseek-v4-flash
 AGENTROUTER_BASE_URL=https://agentrouter.org/v1
 HR_CODEX_BINARY=/usr/lib/chatgpt/resources/codex
 HR_ROUTER_MAX_TURNS=6
-HR_ROUTER_DAILY_REQUESTS=12
+HR_ROUTER_DAILY_REQUESTS=0
 ```
 
 Pause **Auto process** before switching providers, then restart `hr-web` and
@@ -257,11 +257,11 @@ CLI overhead while preserving tool execution and validation feedback. Incomplete
 work goes to review. Request timeouts and the saved total job time budget also apply.
 There is no automatic provider fallback or transport retry.
 
-An atomic `data/router-budget.sqlite3` ledger reserves each CLI launch before
-starting it, including failed attempts. The initial cap is **12 launches per UTC
-day**, shared by assessment and rubric drafting. It survives service restarts.
-The worker pauses Auto process when the cap is exhausted; resume manually after
-reviewing usage and the next UTC day, or deliberately increase the configured cap.
+An atomic `data/router-budget.sqlite3` ledger records each CLI launch before
+starting it, including failed attempts. Set `HR_ROUTER_DAILY_REQUESTS` to a positive
+number to enforce a local launch cap, or set it to **0 for unlimited local launches**.
+The ledger survives service restarts and remains available for usage reporting. This
+setting is separate from any limits imposed by Agent Router or the selected model.
 A CLI launch is not necessarily exactly one gateway request: the CLI can perform
 internal work. These are not dollar-spend limits.
 
