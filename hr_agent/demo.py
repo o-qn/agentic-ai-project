@@ -107,6 +107,17 @@ class SyntheticModel:
         time.sleep(self.delay)
         self.active-=1
         ctx=json.loads(messages[-1]['content'])
+        if ctx.get('task')=='grounded_answer':
+            # Deterministic grounded generator: one claim per applicant, each citing that
+            # applicant's first provided passage. Injected instructions inside a passage quote are
+            # treated as ordinary data — never obeyed, never turned into an ungrounded claim.
+            by_name={}
+            for passage in ctx.get('passages',[]):
+                by_name.setdefault(passage['name'],[]).append(passage['citation_id'])
+            claims=[{'text':f'{name} has a CV passage relevant to the question.','citation_ids':[cids[0]]}
+                    for name,cids in by_name.items()]
+            return {'tool_calls':[{'function':{'name':'submit_grounded_answer',
+                    'arguments':{'answer':{'claims':claims,'insufficient_evidence':not claims}}}}]}
         outline=ctx['outline']
         if not ctx['inspected_sections']:
             return {'tool_calls':[{'function':{'name':'read_cv_sections','arguments':{'application_id':ctx['application_id'],'section_ids':[s['id'] for s in outline[:4]]}}}]}

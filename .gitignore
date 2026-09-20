@@ -14,3 +14,4 @@ deployment/systemd/
 AGENTROUTER_API_KEY.txt
 output/agentrouter-trial/
 VOYAGE_API_KEY.txt
+POSTGRES_URL.txt

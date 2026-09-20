@@ -51,3 +51,15 @@ class ReviewArgs(Strict):
 
 TOOL_MODELS = {'get_role_rubric':RubricArgs,'get_cv_outline':OutlineArgs,'read_cv_sections':ReadArgs,
                'check_requirement_evidence':AssessmentArgs,'submit_assessment':AssessmentArgs,'request_hr_review':ReviewArgs}
+
+# Grounded-answer (RAG) tool — separate from the assessment tools above. Each generated claim
+# must cite retrieved passages by their citation_id; extra='forbid' stops a model smuggling in
+# scores, ranks or applicant identities that did not come from retrieval.
+class GroundedClaim(Strict):
+    text: str = Field(min_length=1,max_length=1200)
+    citation_ids: list[str] = Field(min_length=1,max_length=8)
+class GroundedAnswer(Strict):
+    claims: list[GroundedClaim] = Field(max_length=20)
+    insufficient_evidence: bool = False
+class GroundedArgs(Strict):
+    answer: GroundedAnswer

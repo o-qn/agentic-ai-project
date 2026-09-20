@@ -55,7 +55,9 @@ def main():
                     'embedding_model':config.embed_model or '(not configured)','assessment_provider':config.provider,'assessment_model':config.model,
                     'embeddings_provider':config.embed_provider,
                     'hosted_embedding_model':config.embed_hosted_model or '(not configured)',
-                    'hosted_embedding_key_configured':bool(config.embed_key),'router_key_configured':bool(config.router_key)}
+                    'hosted_embedding_key_configured':bool(config.embed_key),'router_key_configured':bool(config.router_key),
+                    'postgres_configured':bool(config.pg_url),'postgres_schema':config.pg_schema,
+                    'postgres_search_enabled':db.setting('pg_search_enabled',False) is True}
             try:
                 response=requests.get(config.ollama+'/api/tags',timeout=5)
                 response.raise_for_status()
@@ -75,6 +77,28 @@ def main():
             from .demo import create_demo
             create_demo(config)
             print('Synthetic demo created. No live Drive or model calls. Open with: hr-agent serve --data',config.data)
+        elif args.command=='pg-migrate':
+            from . import pgvector
+            report=pgvector.provision(config,db)
+            print('PostgreSQL mirror created and loaded. SQLite remains the live, authoritative store.')
+            print(json.dumps(report,indent=2))
+            print('Next: run "pg-validate" to verify row counts and scores before any vector search is enabled.')
+        elif args.command=='pg-validate':
+            from . import pgvector
+            report=pgvector.verify(config,db)
+            print(json.dumps(report,indent=2))
+            if report['ok']:
+                db.set('pg_search_enabled',True)
+                print('Validation passed. pgvector retrieval enabled; SQLite stays live as the source of truth.')
+            else:
+                db.set('pg_search_enabled',False)
+                print('Validation FAILED; pgvector retrieval left disabled. SQLite remains the only search path.')
+                sys.exit(1)
+        elif args.command=='pg-rollback':
+            from . import pgvector
+            pgvector.teardown(config,db)
+            db.set('pg_search_enabled',False)
+            print('PostgreSQL mirror dropped and vector search disabled. The SQLite database is untouched.')
     except Exception as exc:
         print(f'{type(exc).__name__}: {exc}',file=sys.stderr)
         sys.exit(1)

@@ -10,7 +10,7 @@ from .config import Config
 from .database import DB
 from .model_client import create_model
 from .scoring import ranked
-from . import applicant_search,rubric,review,reports
+from . import applicant_search,grounded_answer,rubric,review,reports
 
 def create_app(config=None,db=None,ollama=None,drive=None):
     config = config or Config.env()
@@ -178,6 +178,13 @@ def create_app(config=None,db=None,ollama=None,drive=None):
     @app.post('/api/roles/<role_id>/chat')
     def chat(role_id):
         return jsonify(applicant_search.answer(config,db,ollama,role_id,request.json['question'],request.json.get('application_ids')))
+
+    @app.post('/api/roles/<role_id>/answer')
+    def grounded(role_id):
+        # Evidence-grounded generated answer. Retrieval stays authoritative and is returned
+        # separately; every generated claim is validated against a retrieved passage, and retrieved
+        # CV text is treated as untrusted data (it can never move a score or invent an applicant).
+        return jsonify(grounded_answer.grounded_answer(config,db,ollama,role_id,request.json['question'],request.json.get('application_ids')))
 
     @app.post('/api/roles/<role_id>/upload')
     def upload_cv(role_id):
