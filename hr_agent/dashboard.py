@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 from flask import Flask,abort,jsonify,render_template,request,send_file,session
 from .config import Config
-from .database import DB
+from .database import DB,audit
 from .model_client import create_model
 from .scoring import ranked
 from . import applicant_search,grounded_answer,rubric,review,reports
@@ -113,6 +113,17 @@ def create_app(config=None,db=None,ollama=None,drive=None):
     def check():
         db.set('check_now',True)
         return jsonify(queued=True)
+
+    @app.post('/api/reset')
+    def reset():
+        if request.json.get('confirm') is not True:
+            raise ValueError('Reset requires explicit confirmation')
+        # This endpoint intentionally calls only the local database. It never
+        # constructs the Drive connector or mutates remote files.
+        result = db.reset_terminal_jobs()
+        db.set('active_job',None)
+        db.set('active_index',None)
+        return jsonify(reset=True,**result)
 
     @app.post('/api/automatic')
     def automatic():

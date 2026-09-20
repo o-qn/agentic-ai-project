@@ -4,7 +4,7 @@ A running checklist of the 7 requested changes: what is finished, what is in pro
 and what is left before the rebuild is complete. Kept separate from `README.md` (the user
 guide) and the PDF guide, neither of which is touched until the implementation is stable.
 
-_Last updated: 2026-09-19. Full test suite: **110 passed**_
+_Last updated: 2026-09-20. Full test suite: **110 passed**_
 (`cd "…/Agentic Ai project" && PYTHONPATH=. .test-venv/bin/pytest -q`)
 
 Work was done in a confirmed priority order: fully-testable features first, then
@@ -67,12 +67,17 @@ ready-to-activate code proven with mocks, then generated answers, then cleanup.
 
 ## Left to do before finishing
 
-- [ ] **Cleanup:** `README.md` still has unresolved git merge-conflict markers
-  (`<<<<<<<` / `=======` / `>>>>>>>`, around lines 3–9, 86–95, 185+) — resolve them.
-- [ ] **Setup docs:** document the new commands (`pg-migrate` / `pg-validate` / `pg-rollback`,
-  hosted-embedding activation, indexing, the grounded-answer endpoint) in the setup docs.
-  `.env.example` already carries the embedding/Postgres notes. The **PDF guide is intentionally
-  left until the implementation is stable.**
+- [x] **Cleanup:** the git merge-conflict markers in `README.md` are resolved — the
+  description, model-settings, and private-files sections were merged and both the
+  "Private files" and "Agent Router through Codex CLI" sections were preserved.
+- [x] **Setup docs:** `README.md` now documents hosted-embedding activation
+  (`HR_EMBED_PROVIDER` / `HR_EMBED_HOSTED_MODEL` / `VOYAGE_API_KEY`, no rescore,
+  re-index gated behind Auto process), the Postgres commands
+  (`pg-migrate` / `pg-validate` / `pg-rollback`, SQLite stays authoritative), and the
+  grounded-answer endpoint (`POST /api/roles/<id>/answer`). `.env.example` already
+  carries the embedding/Postgres notes.
+- [ ] **PDF guide:** intentionally **not** updated — left until the implementation is
+  stable, and out of scope for this rebuild.
 - [ ] Keep the full regression suite green (currently **110 passed**).
 
 ---

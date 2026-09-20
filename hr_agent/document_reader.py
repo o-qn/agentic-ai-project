@@ -18,8 +18,18 @@ class NeedsReview(ValueError):
     pass
 
 def contacts(text):
-    # Only explicitly labelled names; a filename or first line is not verified identity.
-    name = re.search(r'(?im)^(?:name|candidate)\s*:\s*(.{1,120})$',text)
+    # Prefer explicitly labelled names, then recognize the common CV layout where
+    # the candidate's name is the first heading. Neither path verifies identity.
+    name = re.search(r'(?im)^\s*(?:name|candidate)\s*:\s*(.{1,120})\s*$',text)
+    if not name:
+        for line in text.splitlines()[:8]:
+            candidate = re.sub(r'\s+', ' ', line.strip()).strip('•|·—-')
+            words = candidate.split()
+            if (2 <= len(words) <= 5 and 3 <= len(candidate) <= 100
+                    and re.fullmatch(r"[A-Za-zÀ-ÖØ-öø-ÿ' .]+", candidate)
+                    and not re.search(r'(?i)\b(resume|curriculum vitae|cv|profile|email|phone|linkedin|github)\b', candidate)):
+                name = re.match(r'(.+)', candidate)
+                break
     emails = list(dict.fromkeys(re.findall(r'[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}',text)))
     return {'name':name.group(1).strip() if name else None,'emails':emails[:10], 'identity_verified':False}
 

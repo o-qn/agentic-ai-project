@@ -67,6 +67,35 @@ class DB:
     def set(self,key,value):
         self.execute('INSERT INTO settings VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value', (key,json.dumps(value)))
 
+    def reset_terminal_jobs(self):
+        """Remove terminal processing data from SQLite without touching source files or Drive."""
+        with self.tx() as conn:
+            ids = [row[0] for row in conn.execute("""
+                SELECT DISTINCT a.id
+                FROM applications a JOIN jobs j ON j.application_id=a.id
+                WHERE j.state IN ('done','failed')
+                  AND NOT EXISTS (
+                    SELECT 1 FROM jobs pending
+                    WHERE pending.application_id=a.id
+                      AND pending.state NOT IN ('done','failed','superseded')
+                  )""")]
+            if not ids:
+                return {'applications': 0, 'jobs': 0}
+            marks = ','.join('?' for _ in ids)
+            job_count = conn.execute(f'SELECT COUNT(*) FROM jobs WHERE application_id IN ({marks})', ids).fetchone()[0]
+            assessment_ids = [row[0] for row in conn.execute(
+                f'SELECT id FROM assessments WHERE application_id IN ({marks})', ids)]
+            if assessment_ids:
+                assessment_marks = ','.join('?' for _ in assessment_ids)
+                conn.execute(f'DELETE FROM criterion_evidence WHERE assessment_id IN ({assessment_marks})', assessment_ids)
+                conn.execute(f'DELETE FROM assessments WHERE id IN ({assessment_marks})', assessment_ids)
+            for table in ('chunks','source_versions','review_decisions','jobs'):
+                conn.execute(f'DELETE FROM {table} WHERE application_id IN ({marks})', ids)
+            conn.execute(f'UPDATE applications SET duplicate_of=NULL WHERE id IN ({marks})', ids)
+            conn.execute(f'DELETE FROM applications WHERE id IN ({marks})', ids)
+            audit(conn,'terminal_jobs_reset','database',{'applications':len(ids),'jobs':job_count})
+            return {'applications': len(ids), 'jobs': job_count}
+
     @contextmanager
     def lease(self, name, ttl=60):
         owner = uuid.uuid4().hex
