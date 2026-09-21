@@ -101,7 +101,7 @@ HR_OLLAMA_URL=http://127.0.0.1:11434
 HR_EMBED_PROVIDER=ollama               # default/fallback: ollama or voyage
 HR_EMBED_MODEL=nomic-embed-text
 HR_EMBED_URL=http://127.0.0.1:11434
-HR_EMBED_HOSTED_MODEL=                  # set to voyage-3.5-lite or voyage-3 for Voyage
+HR_EMBED_HOSTED_MODEL=                  # set to voyage-code-4 or voyage-3 for Voyage
 
 # Processing
 HR_SCAN_SECONDS=300
@@ -123,7 +123,7 @@ Additional settings for Google Drive, Agent Router, PostgreSQL, and the report f
 2. Set a hosted model in .env:
 
    ~~~dotenv
-   HR_EMBED_HOSTED_MODEL=voyage-3.5-lite
+   HR_EMBED_HOSTED_MODEL=voyage-code-4
    ~~~
 
    If that model is unavailable for the account, try voyage-3.
@@ -206,29 +206,6 @@ POSTGRES_URL=postgresql://hr:hr@127.0.0.1:5432/hr \
 ~~~
 
 Keep POSTGRES_URL.txt local and ignored. A failed mirror sync does not replace the SQLite data.
-
-## Security and private files
-
-Never commit or paste these files into source control:
-
-- .env
-- credentials.json
-- token.json
-- AGENTROUTER_API_KEY.txt
-- VOYAGE_API_KEY or VOYAGE_API_KEY.txt
-- POSTGRES_URL.txt
-- data/ and runtime database/usage files
-
-The dashboard binds to 127.0.0.1 and does not provide public authentication. Do not expose it with a Cloudflare Quick Tunnel or another public tunnel while it contains real CVs. Use a proper authenticated deployment before making it reachable by other users.
-
-Check the ignore rules before adding files:
-
-~~~bash
-git check-ignore -v .env token.json VOYAGE_API_KEY VOYAGE_API_KEY.txt data/
-git ls-files | rg '(^|/)(\.env|credentials\.json|token\.json|VOYAGE_API_KEY|AGENTROUTER_API_KEY|POSTGRES_URL)'
-~~~
-
-The second command should return no credential files.
 
 ## Troubleshooting
 
