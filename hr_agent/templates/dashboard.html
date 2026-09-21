@@ -133,6 +133,14 @@
       </details>
       <details id="settings">
         <summary>Settings &amp; usage</summary>
+        <div id="embedding-controls" class="embedding-controls">
+          <label for="embedding-provider">Search embeddings</label>
+          <select id="embedding-provider" aria-label="Search embedding provider">
+            <option value="ollama">Local Ollama (CPU)</option>
+            <option value="voyage">Voyage (hosted)</option>
+          </select>
+          <p id="embedding-help" class="quiet">Local embeddings keep CV text on this machine.</p>
+        </div>
         <div id="settings-summary" class="stats">
         </div>
         <div id="usage">

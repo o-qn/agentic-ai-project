@@ -147,3 +147,49 @@ def test_activating_hosted_embeddings_reindexes_without_rescoring(system, monkey
 
     emb = usage.embedding_summary(config)
     assert 'voyage' in emb['providers'] and emb['tokens_reported'] is not None
+
+
+
+def test_dashboard_can_select_embedding_provider_and_queue_reindex(system):
+    import json
+    from dataclasses import replace
+    from hr_agent.dashboard import create_app
+    from hr_agent.demo import drain
+    config, db, drive, model, scanner, worker = system
+    role = db.one("SELECT * FROM roles WHERE active=1 ORDER BY id")
+    incoming = json.loads(role['folders'])['Incoming CVs']
+    drive.add('provider-cv', 'provider.txt', incoming,
+              'Name: Provider Person\nBuilt a Python application.\nBuilt a SQL database.\n')
+    scanner.run(); drain(worker)
+    app = db.one("SELECT * FROM applications WHERE file_id='provider-cv'")
+    configured = replace(config, embed_hosted_model='voyage-3', embed_key='sk-test')
+    client = create_app(configured, db, model, drive).test_client()
+    assert client.get('/').status_code == 200
+    with client.session_transaction() as session:
+        csrf = session['csrf']
+    status = client.get('/api/status').get_json()
+    assert status['embedding_provider'] == 'ollama'
+    assert status['embedding_voyage_configured'] is True
+    response = client.post('/api/embedding-provider', json={'provider':'voyage','confirm':True},
+                           headers={'X-CSRF-Token':csrf})
+    assert response.status_code == 200
+    assert response.get_json()['reindex_required'] is True
+    assert db.setting('embedding_provider') == 'voyage'
+    assert db.one('SELECT index_status FROM applications WHERE id=?',(app['id'],))['index_status'] == 'pending'
+    response = client.post('/api/embedding-provider', json={'provider':'ollama'},
+                           headers={'X-CSRF-Token':csrf})
+    assert response.status_code == 200
+    assert db.setting('embedding_provider') == 'ollama'
+
+
+def test_dashboard_rejects_unconfigured_voyage(system):
+    from hr_agent.dashboard import create_app
+    config, db, model = system[0], system[1], system[3]
+    client = create_app(config, db, model).test_client()
+    client.get('/')
+    with client.session_transaction() as session:
+        csrf = session['csrf']
+    response = client.post('/api/embedding-provider', json={'provider':'voyage','confirm':True},
+                           headers={'X-CSRF-Token':csrf})
+    assert response.status_code == 400
+    assert 'VOYAGE_API_KEY' in response.get_json()['error']

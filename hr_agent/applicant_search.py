@@ -1,4 +1,5 @@
 """Read-only, role-scoped retrieval. Answers use source quotes and database scores."""
+import copy
 import json
 import math
 import re
@@ -10,11 +11,22 @@ from . import pgvector
 
 STOP = set('who which candidates candidate applicants applicant applications application have has with experience evidence of in and or the a an is are show me all for role skills knows know compare why ranked rank score scores top second first third list please show tell find this that these those two three completed review queued duplicate removed failed needs pending supported partially partial not demonstrated'.split())
 
+
+def embedding_config(config, db):
+    """Return the provider selected in the dashboard, without changing assessment settings."""
+    selected = db.setting('embedding_provider', config.embed_provider)
+    if selected not in {'ollama', 'voyage'} or selected == config.embed_provider:
+        return config
+    selected_config = copy.copy(config)
+    selected_config.embed_provider = selected
+    return selected_config
+
+
 def index_one(config,db,ollama):
     with db.lease('indexer') as acquired:
         if not acquired:
             return False
-        embedder=make_embedder(config,ollama)
+        embedder=make_embedder(embedding_config(config, db),ollama)
         try:
             embedding_identity=embedder.identity()
         except Exception as exc:
@@ -94,7 +106,7 @@ def answer(config,db,ollama,role_id,question,application_ids=None):
     role = db.one('SELECT * FROM roles WHERE id=? AND active=1',(role_id,))
     if not role:
         raise ValueError('Unknown role')
-    embedder=make_embedder(config,ollama)
+    embedder=make_embedder(embedding_config(config, db),ollama)
     try:
         embedding_identity=embedder.identity()
     except Exception:

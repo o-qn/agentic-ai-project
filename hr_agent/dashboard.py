@@ -98,6 +98,9 @@ def create_app(config=None,db=None,ollama=None,drive=None):
           service_heartbeat=db.setting('service_heartbeat'),worker_heartbeat=db.setting('worker_heartbeat'),
           missed_scan=bool(db.setting('last_successful_scan') and time.time()-db.setting('last_successful_scan')>config.scan_seconds*2),
           model=config.model,model_provider=config.provider,model_ready=ollama.is_validated(db),
+          embedding_provider=db.setting('embedding_provider', config.embed_provider),
+          embedding_hosted_model=config.embed_hosted_model or None,
+          embedding_voyage_configured=bool(config.embed_hosted_model and config.embed_key),
           model_turn_limit=config.router_max_turns if config.provider=='agentrouter' else 12,
           hosted_requests_remaining=ollama.budget_remaining() if config.provider=='agentrouter' else None,
           drive_authorized=(config.data/'token.json').exists(),demo=db.setting('demo',False),
@@ -124,6 +127,24 @@ def create_app(config=None,db=None,ollama=None,drive=None):
         # constructs the Drive connector or mutates remote files.
         result = db.reset_terminal_jobs()
         return jsonify(reset=True,**result)
+
+    @app.post('/api/embedding-provider')
+    def embedding_provider():
+        body = request.get_json(silent=True) or {}
+        provider = body.get('provider')
+        if provider not in {'ollama', 'voyage'}:
+            raise ValueError('Embedding provider must be ollama or voyage')
+        if provider == 'voyage':
+            if body.get('confirm') is not True:
+                raise ValueError('Selecting Voyage requires explicit confirmation')
+            if not config.embed_hosted_model or not config.embed_key:
+                raise ValueError('Configure HR_EMBED_HOSTED_MODEL and VOYAGE_API_KEY before selecting Voyage')
+        previous = db.setting('embedding_provider', config.embed_provider)
+        db.set('embedding_provider', provider)
+        if previous != provider:
+            # Rebuild only the search index. Assessment scores and reports remain unchanged.
+            db.execute("UPDATE applications SET index_status='pending',index_attempts=0,index_next=0,index_error=NULL WHERE active=1 AND status='completed'")
+        return jsonify(embedding_provider=provider, reindex_required=previous != provider)
 
     @app.post('/api/automatic')
     def automatic():
