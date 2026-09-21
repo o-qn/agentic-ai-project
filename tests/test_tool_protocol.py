@@ -24,3 +24,42 @@ def test_response_is_constrained_and_truncation_rejected(system,monkeypatch):
     assert 'tools' not in payloads[0]
     monkeypatch.setattr(model,'request',lambda *a,**k:{'done_reason':'length'})
     with pytest.raises(ValueError,match='exceeded'):model.chat([{'role':'system','content':'Test'}],[])
+
+
+def test_tool_families_are_separate():
+    from hr_agent.tool_protocol import models_for
+    assert 'submit_grounded_answer' not in models_for()
+    assert set(models_for(['submit_grounded_answer'])) == {'submit_grounded_answer'}
+    for names in ([], ['delete_file'], ['submit_grounded_answer', 'submit_assessment']):
+        with pytest.raises(ValueError, match='unavailable'):
+            models_for(names)
+
+
+def test_grounded_answer_through_local_transport(system, monkeypatch):
+    from jsonschema import Draft202012Validator
+    from hr_agent.demo import drain
+    from hr_agent.grounded_answer import grounded_answer
+    config, db, drive, _, scanner, worker = system
+    drive.add('local-answer', 'local.txt', 'role-1',
+              'Name: Local Applicant\nBuilt a Python application.\n')
+    scanner.run()
+    drain(worker)
+    client = Ollama(config)
+    monkeypatch.setattr(client, 'identity', lambda name: name)
+    calls = []
+    def request(endpoint, payload, timeout=None):
+        calls.append(payload)
+        assert endpoint == '/api/chat'
+        assert 'get_role_rubric:' not in payload['messages'][0]['content']
+        branches = payload['format']['properties']['tool_calls']['items']['properties']['function']['oneOf']
+        assert [b['properties']['name']['const'] for b in branches] == ['submit_grounded_answer']
+        value = {'tool_calls': [{'function': {'name': 'submit_grounded_answer', 'arguments': {
+            'answer': {'claims': [{'text': 'The CV describes Python work.', 'citation_ids': ['c1']}],
+                       'insufficient_evidence': False}}}}]}
+        Draft202012Validator.check_schema(payload['format'])
+        Draft202012Validator(payload['format']).validate(value)
+        return {'message': {'content': json.dumps(value)}, 'done_reason': 'stop'}
+    monkeypatch.setattr(client, 'request', request)
+    result = grounded_answer(config, db, client, 'role-1', 'python')
+    assert result['generated']['claims'][0]['citations'][0]['citation_id'] == 'c1'
+    assert len(calls) == 1

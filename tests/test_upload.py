@@ -6,6 +6,9 @@ drain(worker), proving the deposited CV flows through the normal pipeline.
 """
 import io
 import json
+from unittest.mock import Mock
+import pytest
+from hr_agent.drive_connector import Drive, BASE, UPLOAD
 from hr_agent.dashboard import create_app
 from hr_agent.demo import drain
 
@@ -96,3 +99,35 @@ def test_dashboard_renders_upload_and_settings_controls(system):
     assert 'id="upload"' in body
     assert 'id="cv-file"' in body and 'accept=".pdf,.docx,.txt"' in body
     assert 'id="settings"' in body
+
+
+@pytest.mark.parametrize('sharing', ['anyone', 'domain'])
+def test_cv_upload_accepts_existing_broad_sharing(system, sharing):
+    config, db, _, model, _, _ = system
+    role = db.one('SELECT * FROM roles WHERE active=1 ORDER BY id')
+    incoming = json.loads(role['folders'])['Incoming CVs']
+    adapter = Drive.__new__(Drive)
+    adapter.config = config
+    uploaded = []
+
+    def request(method, url=BASE, **kwargs):
+        if method == 'GET' and url.endswith('/permissions'):
+            return Mock(json=lambda: {'permissions': [{'type': sharing, 'role': 'reader'}]})
+        if method == 'GET' and url == BASE + '/generateIds':
+            return Mock(json=lambda: {'ids': ['uploaded-cv']})
+        if method == 'POST' and url == UPLOAD:
+            uploaded.append(kwargs['data'])
+            return Mock()
+        if method == 'GET' and url == BASE + '/uploaded-cv':
+            return Mock(json=lambda: {'id': 'uploaded-cv', 'parents': [incoming],
+                                      'appProperties': {'hrUpload': '1'}})
+        raise AssertionError(f'Unexpected Drive operation: {method} {url}')
+
+    adapter.request = request
+    client, csrf = client_with_csrf(config, db, model, adapter)
+    cv = b'Name: Synthetic Applicant\nPython\n'
+    response = upload(client, csrf, role['id'], 'cv.txt', cv)
+    assert response.status_code == 200
+    assert len(uploaded) == 1 and cv in uploaded[0]
+    assert db.setting('check_now') is True
+    assert db.setting('automatic', False) is False

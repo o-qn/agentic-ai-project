@@ -10,6 +10,7 @@ These tests prove the properties the spec requires of a RAG answer:
 The genuine Codex CLI assessment route and the bounded loop in screening_agent.py are untouched.
 """
 import json
+import pytest
 
 from hr_agent import applicant_search, grounded_answer
 from hr_agent.dashboard import create_app
@@ -145,3 +146,37 @@ def test_dashboard_renders_grounded_answer_control(system):
     config, db, drive, model = system[0], system[1], system[2], system[3]
     body = create_app(config, db, model, drive).test_client().get('/').get_data(as_text=True)
     assert 'id="answer"' in body and 'Grounded answer' in body     # #6 control alongside plain search
+
+
+def test_generation_failure_is_visible_without_leaking_provider_text(system, monkeypatch):
+    config, db, drive, model = system[:4]
+    role_id = _seed_cvs(system, [('failure', 'failure.txt', 'Name: Test Applicant\n' + PY)])
+    def fail(*args, **kwargs):
+        raise ValueError('secret-key and private applicant text')
+    monkeypatch.setattr(model, 'chat', fail)
+    client, csrf = _client_with_csrf(config, db, model, drive)
+    response = client.post(f'/api/roles/{role_id}/answer', json={'question': 'python'},
+                           headers={'X-CSRF-Token': csrf})
+    assert response.status_code == 200
+    result = response.get_json()
+    assert result['retrieval']['candidates']
+    assert result['generated']['error'] == 'model_request_failed'
+    assert 'request failed' in result['generated']['note']
+    assert not result['generated']['claims']
+    assert 'secret-key' not in json.dumps(result)
+
+
+@pytest.mark.parametrize('reply', [None, {'tool_calls': [None]},
+    {'tool_calls': [{'function': {'name': 'submit_grounded_answer', 'arguments': {'answer': {'claims': 'bad'}}}}]}])
+def test_malformed_generation_is_bounded_and_visible(system, monkeypatch, reply):
+    config, db, _, model = system[:4]
+    role_id = _seed_cvs(system, [('invalid', 'invalid.txt', 'Name: Test Applicant\n' + PY)])
+    calls = []
+    def invalid(*args, **kwargs):
+        calls.append(1)
+        return reply
+    monkeypatch.setattr(model, 'chat', invalid)
+    result = grounded_answer.grounded_answer(config, db, model, role_id, 'python')
+    assert result['retrieval']['candidates']
+    assert result['generated']['error'] == 'invalid_model_response'
+    assert len(calls) == 2

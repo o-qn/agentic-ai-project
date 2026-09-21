@@ -232,3 +232,50 @@ def test_disallowed_known_operation_rejected(system,monkeypatch):
     client=client_for(system)
     fake_cli(monkeypatch,client,body={'tool_calls':[{'function':{'name':'get_role_rubric','arguments':{'role_id':'role-1'}}}]})
     with pytest.raises(ValueError,match='schema'):client.chat([],tool())
+
+
+def test_grounded_answer_through_codex_transport(system, monkeypatch):
+    from hr_agent.demo import drain
+    from hr_agent.grounded_answer import grounded_answer
+    from hr_agent.scoring import ranked
+    _, db, drive, _, scanner, worker = system
+    drive.add('grounded', 'grounded.txt', 'role-1',
+              'Name: Synthetic Applicant\nBuilt a Python application.\n')
+    scanner.run()
+    drain(worker)
+    before = [(r['id'], r['score'], r['rank']) for r in ranked(db, 'role-1')]
+    client = client_for(system)
+    monkeypatch.setattr(client, 'identity', lambda name: name)
+    body = {'tool_calls': [{'function': {'name': 'submit_grounded_answer', 'arguments': {
+        'answer': {'claims': [{'text': 'The CV describes a Python application.',
+                               'citation_ids': ['c1']}], 'insufficient_evidence': False}}}}]}
+    fake_cli(monkeypatch, client, body=body)
+    original = client._complete
+    def complete(prompt, schema, timeout=None):
+        assert 'submit_grounded_answer' in prompt
+        assert 'get_role_rubric:' not in prompt
+        operations = schema['properties']['actions']['items']['anyOf']
+        assert [b['properties']['operation']['enum'] for b in operations] == [['submit_grounded_answer']]
+        return original(prompt, schema, timeout)
+    monkeypatch.setattr(client, '_complete', complete)
+    result = grounded_answer(client.config, db, client, 'role-1', 'python')
+    claim = result['generated']['claims'][0]
+    assert claim['citations'][0]['citation_id'] == 'c1'
+    assert 'Python' in claim['citations'][0]['quote']
+    assert [(r['id'], r['score'], r['rank']) for r in ranked(db, 'role-1')] == before
+    assert client.requests_made == 1 and client.usage[-1]['ok']
+
+
+@pytest.mark.parametrize('operation,arguments', [
+    ('get_cv_outline', {'application_id': 1}),
+    ('submit_grounded_answer', {'answer': {'claims': [], 'score': 100}}),
+])
+def test_grounded_transport_rejects_other_tools_and_extra_fields(system, monkeypatch, operation, arguments):
+    from hr_agent.schemas import GroundedArgs
+    client = client_for(system)
+    fake_cli(monkeypatch, client, body={'tool_calls': [{'function': {
+        'name': operation, 'arguments': arguments}}]})
+    answer_tools = [{'type': 'function', 'function': {'name': 'submit_grounded_answer',
+                    'parameters': GroundedArgs.model_json_schema()}}]
+    with pytest.raises(ValueError, match='schema'):
+        client.chat([], answer_tools)

@@ -227,7 +227,7 @@ def create_app(config=None,db=None,ollama=None,drive=None):
         try:
             get_drive().upload_cv(incoming,name,data)
         except DriveError as exc:
-            # Sign-in required, or a folder that is not HR-private: surface the reason.
+            # Surface sign-in and Drive upload errors to the user.
             raise ValueError(str(exc))
         db.set('check_now',True)
         return jsonify(uploaded=True,filename=name)

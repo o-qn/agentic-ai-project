@@ -59,10 +59,10 @@ class Ollama:
             return result
 
     def chat(self,messages,tools,timeout=None):
-        from .tool_protocol import envelope_schema,PROTOCOL
+        from .tool_protocol import envelope_schema,protocol_for
         messages=[dict(message) for message in messages]
-        messages[0]['content'] += '\n'+PROTOCOL
         allowed=[tool['function']['name'] for tool in tools] if tools else None
+        messages[0]['content'] += '\n'+protocol_for(allowed)
         if allowed is not None:
             messages[0]['content']+='\nTools available for this turn: '+', '.join(allowed)+'.'
         payload={'model':self.config.model,'messages':messages,'format':envelope_schema(allowed)}

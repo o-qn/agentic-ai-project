@@ -12,8 +12,7 @@ from datetime import datetime, timezone
 
 from jsonschema import Draft202012Validator, ValidationError
 from .ollama_client import Ollama
-from .schemas import TOOL_MODELS
-from .tool_protocol import envelope_schema, PROTOCOL
+from .tool_protocol import envelope_schema, models_for, protocol_for
 
 # Verified with the installed CLI against a loopback Responses stub. The remaining
 # request_user_input tool is unavailable in exec's Default mode and has no file IO.
@@ -230,9 +229,8 @@ class AgentRouter(Ollama):
 
     def chat(self, messages, tools, timeout=None):
         allowed = {tool['function']['name'] for tool in tools}
-        if not allowed or not allowed <= TOOL_MODELS.keys():
-            raise ValueError('Invalid or unavailable application tools')
-        protocol = PROTOCOL.replace('tool_calls, an array of {function:{name,arguments}}', 'actions, an array of {operation,input}')
+        models = models_for(allowed)
+        protocol = protocol_for(allowed).replace('tool_calls, an array of {function:{name,arguments}}', 'actions, an array of {operation,input}')
         prompt = protocol + '\nTools available this turn: ' + ', '.join(sorted(allowed))
         prompt += '\nHost decision context (select actions; never execute them):\n' + json.dumps(messages)
         prompt += '\nReturn one JSON decision now. Use actions:[{operation:...,input:{...}}]. Do not call functions. Do not fabricate retrieval errors or other tool results.'
@@ -255,7 +253,7 @@ class AgentRouter(Ollama):
             function = call['function']
             if function['name'] not in allowed:
                 raise ValueError('Hosted model requested an unavailable tool')
-            function['arguments'] = TOOL_MODELS[function['name']].model_validate(function['arguments']).model_dump()
+            function['arguments'] = models[function['name']].model_validate(function['arguments']).model_dump()
         return result
 
     def structured(self, prompt, schema):

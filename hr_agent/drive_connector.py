@@ -172,11 +172,9 @@ class Drive:
 
         Stamped appProperties.hrUpload for provenance, but deliberately NOT hrRole:
         the scanner skips hrRole files as generated reports, so a CV must not carry it
-        or it would never be discovered. Refuses a public/domain-wide folder and never
-        alters sharing, mirroring upload_report's privacy stance for sensitive content.
+        or it would never be discovered. Uses the destination's existing sharing
+        settings without requiring HR-only access or changing permissions.
         """
-        self.assert_private(self.config.root)
-        self.assert_private(parent)
         limit = self.config.max_file_mb*1024*1024
         if len(data)>limit:
             raise ValueError('File exceeds configured size limit')
