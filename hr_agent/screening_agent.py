@@ -74,7 +74,21 @@ class ScreeningAgent:
             if valid_draft:
                 available=[tool for tool in tools if tool['function']['name'] in {'submit_assessment','request_hr_review'}]
                 context['next_action']='The draft passed validation. Submit it now with submit_assessment; request review only for a specific unresolved issue.'
-            messages = [{'role':'system','content':SYSTEM},{'role':'user','content':json.dumps(context)}]
+            # The provider adds its own protocol and schema to this payload.
+            # Do not resend the full result/sections when the draft already
+            # contains them; this is the common cause of conservative-budget
+            # review failures.
+            compact = dict(context)
+            if self.config.provider == 'agentrouter' and valid_draft:
+                # On the final hosted turn the validated draft is the only
+                # evidence payload still needed. Re-sending the outline,
+                # sections, and previous tool result can exceed the CLI's
+                # conservative input budget.
+                compact.pop('outline', None)
+                compact.pop('current_sections', None)
+                compact.pop('last_tool_result', None)
+                compact.pop('inspected_sections', None)
+            messages = [{'role':'system','content':SYSTEM},{'role':'user','content':json.dumps(compact,separators=(',',':'))}]
             state['turns'] += 1
             save()  # Reserve a turn before inference; restart cannot reset its budget.
             try:

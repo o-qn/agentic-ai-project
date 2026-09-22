@@ -43,7 +43,7 @@ def decide(db,app_id,action,reason,actor,expiry_days=90):
                 conn.execute("UPDATE applications SET status='completed' WHERE id=?",(app_id,))
             conn.execute('''INSERT INTO jobs(application_id,version,rubric_id,step,updated) VALUES(?,?,?,?,?)
              ON CONFLICT(application_id,version,rubric_id) DO UPDATE SET state='queued',step=excluded.step,
-             attempts=0,next_try=0,agent_state='{}',generation=jobs.generation+1,updated=excluded.updated''',
+             attempts=0,next_try=0,error=NULL,error_at=NULL,agent_state='{}',generation=jobs.generation+1,updated=excluded.updated''',
                          (app_id,app['version'],role['rubric_id'] or 0,step,time.time()))
         revision = dirty(conn,app['role_id'])
         conn.execute('UPDATE applications SET required_revision=? WHERE id=?',(revision,app_id))
