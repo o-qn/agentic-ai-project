@@ -5,7 +5,7 @@ from hr_agent.demo import RUBRIC,drain
 from hr_agent.schemas import Assessment
 from hr_agent.scoring import validate_evidence,score
 from hr_agent.dashboard import create_app
-from hr_agent.document_reader import extract,extract_inner,NeedsReview
+from hr_agent.document_reader import extract,extract_inner,NeedsReview,contacts
 from hr_agent.database import DB
 
 CV='Name: Example Person\nBuilt a Python application.\nBuilt a SQL database.\n'
@@ -77,6 +77,20 @@ def test_txt_and_docx_extraction_with_tables(tmp_path):
     table.cell(0,0).text='Project';table.cell(0,1).text='SQL ledger'
     path=tmp_path/'sample.docx';doc.save(path)
     assert 'SQL ledger' in extract_inner(path,40)['sections'][0]['text']
+
+def test_name_extraction_handles_common_headers_without_guessing_sentences():
+    assert contacts('Jane Doe | jane@example.com | +962 79 123 4567\nSkills: Python')['name'] == 'Jane Doe'
+    assert contacts('Jane Doe - Senior Engineer\nEmail: jane@example.com')['name'] == 'Jane Doe'
+    assert contacts('Personal Details\nFull Name: Anne-Marie O\'Neil\nEmail: x@example.com')['name'] == "Anne-Marie O'Neil"
+    assert contacts('Skills\nPython\nPersonal details\nJohn Smith')['name'] == 'John Smith'
+    assert contacts('I am a dancing banana.\nOnly tap dancing.')['name'] is None
+    assert contacts('Skills\nPython', 'Jane_Doe_CV.pdf')['name'] == 'Jane Doe'
+
+def test_extraction_uses_original_drive_filename_when_header_has_no_name(system, tmp_path):
+    config, *_ = system
+    path = tmp_path / '1-deadbeef.txt'
+    path.write_text('Skills: Python\nBuilt an inventory application.\n')
+    assert extract(path, config, 'Jane_Doe_CV.pdf')['contact']['name'] == 'Jane Doe'
 
 def test_long_document_never_silently_truncated(tmp_path):
     text=CV+'Long legitimate work history.\n'*300

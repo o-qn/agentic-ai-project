@@ -4,6 +4,26 @@ import time
 import hashlib
 import requests
 
+
+def estimate_prompt_tokens(value):
+    """Conservative token estimate for a serialized prompt.
+
+    The model context setting is expressed in tokens, while the old guard compared
+    UTF-8 bytes directly to that token budget. That rejected normal prompts several
+    times earlier than necessary (especially JSON and English text). ASCII text is
+    estimated at three bytes per token; non-ASCII characters get a larger allowance
+    because their tokenization is less predictable.
+    """
+    text = value if isinstance(value, str) else str(value)
+    ascii_count = sum(ord(char) < 128 for char in text)
+    non_ascii_count = len(text) - ascii_count
+    return (ascii_count + 2) // 3 + non_ascii_count * 2
+
+
+def fits_prompt_budget(value, context, output_tokens, overhead=512):
+    """Return whether a prompt leaves room for output and transport overhead."""
+    return estimate_prompt_tokens(value) + output_tokens + overhead <= context
+
 class Ollama:
     def __init__(self,config):
         self.config = config
@@ -67,7 +87,8 @@ class Ollama:
             messages[0]['content']+='\nTools available for this turn: '+', '.join(allowed)+'.'
         payload={'model':self.config.model,'messages':messages,'format':envelope_schema(allowed)}
         # Schema grammar is not prompt text. Bound the actual serialized messages conservatively.
-        if len(json.dumps(messages).encode())>self.config.context-self.config.output_tokens-512:
+        if not fits_prompt_budget(json.dumps(messages, ensure_ascii=False), self.config.context,
+                                 self.config.output_tokens):
             raise ValueError('Prompt cannot fit conservative context budget; HR review required')
         result=self.request('/api/chat',payload,timeout)
         if result.get('done_reason')=='length':
@@ -79,7 +100,8 @@ class Ollama:
 
     def structured(self,prompt,schema):
         payload = {'model':self.config.model,'messages':[{'role':'user','content':prompt}],'format':schema}
-        if len(json.dumps(payload).encode())>self.config.context-self.config.output_tokens-512:
+        if not fits_prompt_budget(json.dumps(payload, ensure_ascii=False), self.config.context,
+                                 self.config.output_tokens):
             raise ValueError('Structured request exceeds context budget')
         result = self.request('/api/chat',payload)
         if result.get('done_reason')=='length':

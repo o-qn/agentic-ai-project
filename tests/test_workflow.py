@@ -176,7 +176,20 @@ def test_source_change_during_inference_discards_stale_commit(system):
     scanner.run();thread.join(timeout=5)
     assert not ranked(db,'role-1')
     drain(worker)
-    assert ranked(db,'role-1')[0]['score']==20
+    reviewed = db.one("SELECT status,review_reason FROM applications WHERE file_id='cv-1'")
+    assert reviewed['status']=='review'
+    assert 'Incompatible resume' in reviewed['review_reason']
+    assert not ranked(db,'role-1')
+
+def test_score_below_threshold_is_sent_to_review(system):
+    config,db,drive,model,scanner,worker=system
+    add(drive,scanner,file='low-score',text='Name: Low Match\nNo relevant application evidence.')
+    drain(worker)
+    app=db.one("SELECT status,review_reason FROM applications WHERE file_id='low-score'")
+    assert app['status']=='review'
+    assert app['review_reason']=='Incompatible resume: rubric score 0/100 is below the 25/100 review threshold. HR review required.'
+    role=db.one("SELECT folders FROM roles WHERE id='role-1'")
+    assert drive.get('low-score')['parents']==[json.loads(role['folders'])['Needs Review']]
 
 def test_report_values_escape_formulas(system):
     config,db,drive,model,scanner,worker=system

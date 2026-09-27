@@ -21,6 +21,10 @@ def worker_process(config,stop):
     worker = Worker(config,db,Drive(config),create_model(config))
     while not stop.is_set():
         db.set('worker_heartbeat',time.time())
+        # Apply newly configured score-review rules even while automatic
+        # processing is paused; the dashboard should reflect the rule without
+        # waiting for another assessment run.
+        getattr(worker,'reconcile_low_score_reviews',lambda:None)()
         automatic = db.setting('automatic',False)
         pause = db.setting('automatic_pause')
         if not automatic:

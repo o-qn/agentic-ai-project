@@ -11,7 +11,7 @@ import time
 from datetime import datetime, timezone
 
 from jsonschema import Draft202012Validator, ValidationError
-from .ollama_client import Ollama
+from .ollama_client import Ollama, fits_prompt_budget
 from .tool_protocol import envelope_schema, models_for, protocol_for
 
 # Verified with the installed CLI against a loopback Responses stub. The remaining
@@ -118,10 +118,18 @@ class AgentRouter(Ollama):
             pass
         process.wait(timeout=5)
 
-    def _complete(self, prompt, schema, timeout=None):
+    def _complete(self, prompt, schema, timeout=None, reserved_output_tokens=None):
         if not self.config.router_key.strip():
             raise ValueError('Agent Router key file is missing or empty')
-        if len(prompt.encode()) > self.config.context - self.config.output_tokens - 512:
+        # Screening decisions are short action envelopes. Reserve enough room
+        # for the largest allowed envelope, rather than the local Ollama output
+        # setting (which is often 2048 tokens and is not sent to the hosted CLI).
+        output_budget = reserved_output_tokens
+        if output_budget is None:
+            output_budget = (768 if isinstance(schema, dict)
+                             and 'actions' in schema.get('properties', {})
+                             else self.config.output_tokens)
+        if not fits_prompt_budget(prompt, self.config.context, output_budget, overhead=256):
             raise ValueError('Prompt exceeds the configured conservative input budget')
         Draft202012Validator.check_schema(schema)
         self._reserve()
@@ -227,12 +235,71 @@ class AgentRouter(Ollama):
             with os.fdopen(fd, 'a') as stream:
                 stream.write(json.dumps(record) + '\n')
 
+    @staticmethod
+    def _compact_host_messages(messages, aggressive=False):
+        """Remove transport-only duplication from screening state.
+
+        The Python host remains the source of truth. The router only needs
+        section IDs and lengths to choose its next read, while locations and
+        full section text are supplied when a section is actually inspected.
+        This keeps large CV outlines and repeated tool results from consuming
+        the model's input window.
+        """
+        copied = [dict(message) for message in messages]
+        if not copied or not isinstance(copied[-1].get('content'), str):
+            return copied
+        try:
+            context = json.loads(copied[-1]['content'])
+        except (TypeError, ValueError):
+            return copied
+        if not isinstance(context, dict):
+            return copied
+        outline = context.get('outline')
+        if isinstance(outline, list):
+            context['outline'] = [
+                {'id': item.get('id'), 'length': item.get('length')}
+                for item in outline if isinstance(item, dict) and item.get('id')
+            ]
+            if aggressive:
+                context['outline'] = [item['id'] for item in context['outline']]
+        if aggressive:
+            rubric = context.get('rubric')
+            if isinstance(rubric, dict) and isinstance(rubric.get('criteria'), list):
+                # Criterion definitions are what the model needs to classify
+                # evidence. Weights and repeated display descriptions are
+                # enforced by Python and can be omitted only as a last resort.
+                context['rubric'] = {'criteria': [
+                    {key: item[key] for key in ('id', 'supported', 'partial', 'not_demonstrated')
+                     if key in item}
+                    for item in rubric['criteria'] if isinstance(item, dict)
+                ]}
+                context.pop('inspected_sections', None)
+            sections = context.get('current_sections')
+            if isinstance(sections, list):
+                context['current_sections'] = [
+                    {key: item[key] for key in ('id', 'location', 'text') if key in item}
+                    for item in sections if isinstance(item, dict)
+                ]
+        # The system message already carries this instruction verbatim.
+        context.pop('name_instruction', None)
+        if not context.get('hr_dismissed_previous_flag'):
+            context.pop('hr_dismissed_previous_flag', None)
+        result = context.get('last_tool_result')
+        if result in (context.get('current_sections'), context.get('rubric'), context.get('outline')):
+            context.pop('last_tool_result', None)
+        copied[-1]['content'] = json.dumps(context, ensure_ascii=False, separators=(',', ':'))
+        return copied
+
     def chat(self, messages, tools, timeout=None):
         allowed = {tool['function']['name'] for tool in tools}
         models = models_for(allowed)
         protocol = protocol_for(allowed).replace('tool_calls, an array of {function:{name,arguments}}', 'actions, an array of {operation,input}')
         prompt = protocol + '\nTools available this turn: ' + ', '.join(sorted(allowed))
-        prompt += '\nHost decision context (select actions; never execute them):\n' + json.dumps(messages)
+        # Compact JSON avoids spending context on indentation and repeated
+        # whitespace. The host context itself is still authoritative state.
+        messages = self._compact_host_messages(messages)
+        host_context = json.dumps(messages, ensure_ascii=False, separators=(',', ':'))
+        prompt += '\nHost decision context (select actions; never execute them):\n' + host_context
         prompt += '\nReturn one JSON decision now. Use actions:[{operation:...,input:{...}}]. Do not call functions. Do not fabricate retrieval errors or other tool results.'
         # A flat transport envelope avoids confusing JSON requests with native CLI
         # function calls. The same application argument schemas remain authoritative.
@@ -246,6 +313,18 @@ class AgentRouter(Ollama):
         schema['properties'] = {'actions': {'type':'array', 'minItems':1, 'maxItems':4,
                                            'items':{'anyOf':branches}}}
         schema['required'] = ['actions']
+        if not fits_prompt_budget(prompt, self.config.context, 768, overhead=256):
+            # Keep the full state for ordinary prompts, but shed optional
+            # transport metadata if a very large CV still approaches the
+            # provider context limit.
+            prefix = protocol + '\nTools available this turn: ' + ', '.join(sorted(allowed))
+            messages = self._compact_host_messages(messages, aggressive=True)
+            host_context = json.dumps(messages, ensure_ascii=False, separators=(',', ':'))
+            prompt = prefix + '\nHost decision context (select actions; never execute them):\n' + host_context
+            prompt += '\nReturn one JSON decision now. Use actions:[{operation:...,input:{...}}]. Do not call functions. Do not fabricate retrieval errors or other tool results.'
+        # A hosted screening response is an action envelope, not a full report;
+        # 768 output tokens leaves ample room for four tool calls while keeping
+        # the input guard from rejecting otherwise valid CV state.
         value = self._complete(prompt, schema, timeout)
         result = {'tool_calls': [{'function': {'name':action['operation'], 'arguments':action['input']}} for action in value['actions']]}
         # Revalidate with application models even after JSON schema validation.

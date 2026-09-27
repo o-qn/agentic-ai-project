@@ -53,6 +53,8 @@ def test_validation_correction_keeps_original_cv_available(system):
     def chat(messages, tools, timeout=None):
         ctx = json.loads(messages[-1]['content'])
         turns.append(ctx)
+        if len(turns) == 1:
+            assert ctx['candidate_name'] == 'Short Applicant'
         if len(turns) == 2:
             return {'tool_calls':[{'function':{'name':'check_requirement_evidence','arguments':{
                 'assessment':{'findings':[{'criterion_id':'python','level':'partial',

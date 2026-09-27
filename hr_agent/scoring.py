@@ -2,6 +2,13 @@ from .schemas import Assessment, Rubric
 
 FACTORS = {'supported':1.0,'partial':0.5,'not_demonstrated':0.0}
 
+def low_score_review_reason(points, threshold):
+    """Describe a rubric-based review flag; equality passes the threshold."""
+    if not threshold or points >= threshold:
+        return None
+    return (f'Incompatible resume: rubric score {points:g}/100 is below the '
+            f'{threshold}/100 review threshold. HR review required.')
+
 def validate_evidence(assessment,rubric,sections,seen):
     a = Assessment.model_validate(assessment)
     r = Rubric.model_validate(rubric)

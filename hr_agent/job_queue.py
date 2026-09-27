@@ -9,7 +9,7 @@ from .database import audit,dirty
 from .document_reader import extract,NeedsReview
 from .drive_connector import SourceChanged
 from .screening_agent import ScreeningAgent,PROMPT_VERSION
-from .scoring import score,FACTORS
+from .scoring import score,FACTORS,low_score_review_reason
 from . import reports
 
 class Worker:
@@ -29,6 +29,37 @@ class Worker:
     def checkpoint(self,job,step):
         self.db.execute("UPDATE jobs SET step=?,state='queued',attempts=0,next_try=0,updated=? WHERE id=? AND state!='superseded' AND generation=?",
                         (step,time.time(),job['id'],job['generation']))
+
+    def reconcile_low_score_reviews(self):
+        """Move already-completed below-threshold assessments into HR review.
+
+        This covers assessments created before the threshold was enabled. The
+        assessment and evidence remain intact; only the application state and
+        delivery checkpoint change.
+        """
+        threshold = self.config.review_score_threshold
+        if not threshold:
+            return
+        candidates = self.db.rows('''SELECT a.id,a.role_id,a.required_revision,s.score
+            FROM applications a JOIN roles r ON r.id=a.role_id
+            JOIN assessments s ON s.application_id=a.id AND s.version=a.version AND s.rubric_id=r.rubric_id
+            WHERE a.active=1 AND a.status='completed' AND s.score<?''',(threshold,))
+        if not candidates:
+            return
+        with self.db.tx() as conn:
+            for app in candidates:
+                reason = low_score_review_reason(app['score'], threshold)
+                revision = dirty(conn, app['role_id'])
+                conn.execute("""UPDATE applications
+                    SET status='review',review_reason=?,required_revision=?,updated=?
+                    WHERE id=? AND status='completed'""",
+                             (reason, revision, time.time(), app['id']))
+                conn.execute("""UPDATE jobs SET step='report',state='queued',attempts=0,
+                    next_try=0,error=NULL,error_at=NULL,updated=?
+                    WHERE application_id=? AND state!='superseded'""",
+                             (time.time(), app['id']))
+                audit(conn, 'score_review_requested', app['id'],
+                      {'score': app['score'], 'threshold': threshold, 'reason': reason})
 
     def review(self,job,reason):
         saved = self.db.one('SELECT agent_state FROM jobs WHERE id=?',(job['id'],))
@@ -81,7 +112,7 @@ class Worker:
             else:
                 self.checkpoint(job,'extract')
         elif job['step']=='extract':
-            result = extract(app['source_path'],self.config)
+            result = extract(app['source_path'],self.config,app['filename'])
             with self.db.tx() as conn:
                 if not self.current(conn,job):
                     return
@@ -118,7 +149,10 @@ class Worker:
                     if not self.current(conn,job):
                         return
                     revision=dirty(conn,app['role_id'])
-                    conn.execute("UPDATE applications SET status='completed',required_revision=?,review_reason=NULL WHERE id=?",(revision,app['id']))
+                    saved_score = float(saved['score'])
+                    review_reason = low_score_review_reason(saved_score, self.config.review_score_threshold)
+                    conn.execute("UPDATE applications SET status=?,review_reason=?,required_revision=? WHERE id=?",
+                                 ('review' if review_reason else 'completed',review_reason,revision,app['id']))
                 self.checkpoint(job,'report')
                 return
             body = self.agent.run(job,app,rubric)
@@ -135,8 +169,11 @@ class Worker:
                     conn.execute('INSERT INTO criterion_evidence(assessment_id,criterion_id,weight,points,body) VALUES(?,?,?,?,?)',
                                  (cur.lastrowid,finding['criterion_id'],weight,weight*FACTORS[finding['level']],json.dumps(finding)))
                 revision = dirty(conn,app['role_id'])
-                conn.execute("UPDATE applications SET status='completed',review_reason=NULL,required_revision=?,index_status='pending',updated=? WHERE id=?",
-                             (revision,time.time(),app['id']))
+                review_reason = low_score_review_reason(points, self.config.review_score_threshold)
+                conn.execute("""UPDATE applications
+                    SET status=?,review_reason=?,required_revision=?,index_status='pending',updated=?
+                    WHERE id=?""",
+                             ('review' if review_reason else 'completed', review_reason, revision, time.time(), app['id']))
                 conn.execute("UPDATE jobs SET step='report',state='queued',attempts=0,updated=? WHERE id=?",(time.time(),job['id']))
                 audit(conn,'assessment_committed',app['id'],{'score':points,'rubric_id':job['rubric_id']})
         elif job['step']=='report':
@@ -169,6 +206,7 @@ class Worker:
                 fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
             except BlockingIOError:
                 return False
+            self.reconcile_low_score_reviews()
             # The OS lock proves no other worker is alive; reclaim interrupted running steps.
             self.db.execute("UPDATE jobs SET state='queued' WHERE state='running'")
             job = self.db.one('''SELECT j.* FROM jobs j JOIN applications a ON a.id=j.application_id

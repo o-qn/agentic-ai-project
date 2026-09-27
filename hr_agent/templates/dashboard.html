@@ -4,28 +4,40 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf }}">
-    <title>CV screening</title>
+    <title>Talent screening workspace</title>
     <link rel="stylesheet" href="/static/dashboard.css">
   </head>
   <body>
     <main>
-      <header>
-        <h1>CV screening</h1>
-        <span id="breadcrumb">
-        </span>
+      <header class="site-header">
+        <div class="brand-block">
+          <span class="eyebrow">Talent operations</span>
+          <h1>CV screening</h1>
+          <p>Review evidence, compare applicants, and keep every decision traceable.</p>
+        </div>
+        <div class="header-meta">
+          <span class="workspace-state"><i aria-hidden="true"></i> Local workspace</span>
+          <span id="breadcrumb">
+          </span>
+        </div>
       </header>
       <div class="toolbar">
-        <select id="role" aria-label="Select role">
-          <option>No roles yet</option>
-        </select>
-        <button id="upload">Upload CV</button>
-        <input type="file" id="cv-file" accept=".pdf,.docx,.txt" aria-label="Choose a CV file to upload" hidden>
-        <label>
-          <input type="checkbox" id="automatic"> Auto process</label>
-        <button id="check">Check Drive now</button>
-        <button id="reset" class="danger" title="Remove completed and failed processing records from the local database">Reset completed / failed</button>
-        <a id="report-link" target="_blank" rel="noreferrer">Report</a>
-        <a id="csv-link">CSV</a>
+        <div class="toolbar-main">
+          <label class="control-label" for="role">Role</label>
+          <select id="role" aria-label="Select role">
+            <option>No roles yet</option>
+          </select>
+          <button id="upload">Upload CV</button>
+          <input type="file" id="cv-file" accept=".pdf,.docx,.txt" aria-label="Choose a CV file to upload" hidden>
+          <label class="toggle">
+            <input type="checkbox" id="automatic"> <span>Auto process</span></label>
+          <button id="check">Check Drive now</button>
+        </div>
+        <div class="toolbar-links">
+          <a id="report-link" target="_blank" rel="noreferrer">Report</a>
+          <a id="csv-link">CSV</a>
+          <button id="reset" class="danger" title="Remove completed and failed processing records from the local database">Reset completed / failed</button>
+        </div>
       </div>
       <p id="notice" role="status">Loading…</p>
       <section id="processing" aria-label="Processing progress">

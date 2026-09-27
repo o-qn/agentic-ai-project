@@ -149,6 +149,34 @@ def test_structured_schema(system,monkeypatch):
     assert client.structured('synthetic',{'type':'object','properties':{'ok':{'type':'boolean'}},'required':['ok']})=={'ok':True}
 
 
+def test_prompt_budget_counts_tokens_instead_of_raw_bytes(system, monkeypatch):
+    client = client_for(system)
+    fake_cli(monkeypatch, client, body={'ok': True})
+    schema = {'type':'object','properties':{'ok':{'type':'boolean'}},'required':['ok']}
+    # This is well within a 16k-token context, but the old byte comparison
+    # rejected it before the isolated CLI was launched.
+    assert client.structured('x' * 14000, schema) == {'ok': True}
+
+
+def test_hosted_screening_context_is_compacted_before_budget_guard(system, monkeypatch):
+    client = client_for(system)
+    fake_cli(monkeypatch, client)
+    context = {
+        'application_id': 1,
+        'role_id': 'role-1',
+        'candidate_name': 'Long Context Applicant',
+        'outline': [{'id': f'p1-{i}', 'location': 'page/part 1 · section: Experience', 'length': 1600}
+                    for i in range(160)],
+        'current_sections': [{'id': f'p1-{i}', 'location': 'page/part 1', 'text': 'Evidence ' * 200}
+                             for i in range(4)],
+        'last_tool_result': [{'id': f'p1-{i}', 'location': 'page/part 1', 'text': 'Evidence ' * 200}
+                             for i in range(4)],
+    }
+    messages = [{'role': 'system', 'content': 'screening'},
+                {'role': 'user', 'content': json.dumps(context)}]
+    assert client.chat(messages, tool()) == REPLY
+
+
 def test_json_encoded_arguments_still_strict(system,monkeypatch):
     client=client_for(system)
     body={'tool_calls':[{'function':{'name':'get_cv_outline','arguments':json.dumps({'application_id':1})}}]}

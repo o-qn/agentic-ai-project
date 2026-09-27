@@ -106,7 +106,13 @@ HR_EMBED_HOSTED_MODEL=                  # set to voyage-code-4 or voyage-3 for V
 # Processing
 HR_SCAN_SECONDS=300
 HR_DATA_DIR=./data
+HR_REVIEW_SCORE_THRESHOLD=25       # scores below this are sent to HR review
 ~~~
+
+Applicants scoring below the configured threshold are saved with their full
+assessment evidence, marked **Needs review**, and moved to the Drive **Needs
+Review** folder. A score equal to the threshold passes this rule. Set the value
+to `0` to disable score-based review flags.
 
 The dashboard provider selection overrides HR_EMBED_PROVIDER at runtime. Leaving the environment value as ollama keeps local embeddings as the safe default while still allowing an authorized user to select Voyage from the dashboard.
 
@@ -263,4 +269,3 @@ systemd/                 user service unit templates
 tests/                  automated tests
 data/                   local runtime state (ignored)
 ~~~
-

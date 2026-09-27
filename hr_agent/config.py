@@ -33,6 +33,7 @@ class Config:
     max_pages: int = 40
     context: int = 16384
     output_tokens: int = 2048
+    review_score_threshold: int = 25
     threads: int = 6
     ocr_language: str = "eng"
     port: int = 8787
@@ -53,8 +54,8 @@ class Config:
                 raise ValueError('Set HR_EMBED_HOSTED_MODEL when HR_EMBED_PROVIDER is voyage')
             if not 1 <= self.embed_batch <= 128 or not 1 <= self.embed_rpm <= 1000:
                 raise ValueError('Hosted embedding limits: batch 1–128, rpm 1–1000')
-        if not 1 <= self.router_max_turns <= 12 or not 0 <= self.router_daily_requests <= 1000:
-            raise ValueError("Hosted limits: turns 1–12, daily requests 0–1000 (0 means unlimited)")
+        if not 1 <= self.router_max_turns <= 12 or not 0 <= self.router_daily_requests <= 10000:
+            raise ValueError("Hosted limits: turns 1–12, daily requests 0–10000 (0 means unlimited)")
         if not Path(self.codex_binary).is_absolute():
             raise ValueError("HR_CODEX_BINARY must be an absolute path")
         remote = urlparse(self.router_url)
@@ -80,6 +81,8 @@ class Config:
             raise ValueError("Threads must be 1–6 and context 4096–32768")
         if not 256 <= self.output_tokens <= self.context // 3:
             raise ValueError("Invalid output token budget")
+        if not 0 <= self.review_score_threshold <= 100:
+            raise ValueError("HR_REVIEW_SCORE_THRESHOLD must be between 0 and 100")
         if min(self.scan_seconds, self.timeout, self.job_seconds, self.max_file_mb, self.max_pages) <= 0:
             raise ValueError("Resource/time limits must be positive")
         self.data.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -120,7 +123,8 @@ class Config:
 
         names = {"scan_seconds":"SCAN_SECONDS", "timeout":"REQUEST_TIMEOUT", "job_seconds":"JOB_SECONDS",
                  "max_file_mb":"MAX_FILE_MB", "max_pages":"MAX_PAGES", "context":"CONTEXT",
-                 "output_tokens":"OUTPUT_TOKENS", "threads":"THREADS", "port":"PORT",
+                 "output_tokens":"OUTPUT_TOKENS", "review_score_threshold":"REVIEW_SCORE_THRESHOLD",
+                 "threads":"THREADS", "port":"PORT",
                  "embed_batch":"EMBED_BATCH", "embed_rpm":"EMBED_RPM"}
         vals = {key:int(os.environ["HR_"+env]) for key,env in names.items() if "HR_"+env in os.environ}
         return cls(data=Path(os.getenv("HR_DATA_DIR", "data")),

@@ -98,13 +98,18 @@ def create_app(config=None,db=None,ollama=None,drive=None):
           service_heartbeat=db.setting('service_heartbeat'),worker_heartbeat=db.setting('worker_heartbeat'),
           missed_scan=bool(db.setting('last_successful_scan') and time.time()-db.setting('last_successful_scan')>config.scan_seconds*2),
           model=config.model,model_provider=config.provider,model_ready=ollama.is_validated(db),
+          review_score_threshold=config.review_score_threshold,
           embedding_provider=db.setting('embedding_provider', config.embed_provider),
           embedding_hosted_model=config.embed_hosted_model or None,
           embedding_voyage_configured=bool(config.embed_hosted_model and config.embed_key),
           model_turn_limit=config.router_max_turns if config.provider=='agentrouter' else 12,
+          hosted_requests_limit=config.router_daily_requests if config.provider=='agentrouter' and config.router_daily_requests else None,
           hosted_requests_remaining=ollama.budget_remaining() if config.provider=='agentrouter' else None,
           drive_authorized=(config.data/'token.json').exists(),demo=db.setting('demo',False),
-          jobs=db.rows('SELECT state,COUNT(*) AS count FROM jobs WHERE state!=\'superseded\' GROUP BY state'))
+          jobs=db.rows('SELECT state,COUNT(*) AS count FROM jobs WHERE state!=\'superseded\' GROUP BY state'),
+          reviews=db.rows('''SELECT id AS application_id,filename,review_reason
+                             FROM applications WHERE active=1 AND status='review'
+                             ORDER BY id'''))
 
     @app.get('/api/usage')
     def usage_report():
@@ -169,7 +174,8 @@ def create_app(config=None,db=None,ollama=None,drive=None):
             row.pop('sections',None)
         selected = db.one('SELECT * FROM rubrics WHERE id=?',(role['rubric_id'],))
         return jsonify(report_retry=db.setting('report_retry:'+role_id),role=role,applications=rows,ranked=ranking,top=ranking[:3],rubric=selected,
-                       jobs=db.rows('''SELECT j.* FROM jobs j JOIN applications a ON a.id=j.application_id
+                       jobs=db.rows('''SELECT j.*,a.filename,a.status AS application_status,a.review_reason
+                         FROM jobs j JOIN applications a ON a.id=j.application_id
                          WHERE a.role_id=? AND j.state!='superseded' ORDER BY j.id DESC''',(role_id,)))
 
     @app.get('/api/applications/<int:app_id>')
