@@ -81,6 +81,11 @@ def create_app(config=None,db=None,ollama=None,drive=None):
         session.setdefault('csrf',secrets.token_urlsafe(32))
         return render_template('dashboard.html',csrf=session['csrf'])
 
+    @app.get('/owner')
+    def owner():
+        session.setdefault('csrf',secrets.token_urlsafe(32))
+        return render_template('owner.html',csrf=session['csrf'])
+
     @app.get('/api/status')
     def status():
         active=db.setting('active_job')
@@ -100,6 +105,7 @@ def create_app(config=None,db=None,ollama=None,drive=None):
           model=config.model,model_provider=config.provider,model_ready=ollama.is_validated(db),
           review_score_threshold=config.review_score_threshold,
           embedding_provider=db.setting('embedding_provider', config.embed_provider),
+          embedding_local_model=config.embed_model or None,
           embedding_hosted_model=config.embed_hosted_model or None,
           embedding_voyage_configured=bool(config.embed_hosted_model and config.embed_key),
           model_turn_limit=config.router_max_turns if config.provider=='agentrouter' else 12,
@@ -173,10 +179,14 @@ def create_app(config=None,db=None,ollama=None,drive=None):
             row.pop('source_path',None)
             row.pop('sections',None)
         selected = db.one('SELECT * FROM rubrics WHERE id=?',(role['rubric_id'],))
-        return jsonify(report_retry=db.setting('report_retry:'+role_id),role=role,applications=rows,ranked=ranking,top=ranking[:3],rubric=selected,
-                       jobs=db.rows('''SELECT j.*,a.filename,a.status AS application_status,a.review_reason
+        local_report = db.one('SELECT path FROM report_revisions WHERE role_id=? ORDER BY revision DESC LIMIT 1',(role_id,))
+        local_report_ready = bool(local_report and local_report['path'] and Path(local_report['path']).is_file())
+        jobs=db.rows('''SELECT j.*,a.filename,a.status AS application_status,a.review_reason
                          FROM jobs j JOIN applications a ON a.id=j.application_id
-                         WHERE a.role_id=? AND j.state!='superseded' ORDER BY j.id DESC''',(role_id,)))
+                         WHERE a.role_id=? AND a.active=1 AND j.state!='superseded' ORDER BY j.id DESC''',(role_id,))
+        from .analytics import role_summary
+        return jsonify(report_retry=db.setting('report_retry:'+role_id),role=role,applications=rows,ranked=ranking,top=ranking[:3],rubric=selected,
+                       jobs=jobs,analytics=role_summary(rows,ranking,selected,jobs),local_report_ready=local_report_ready)
 
     @app.get('/api/applications/<int:app_id>')
     def application(app_id):

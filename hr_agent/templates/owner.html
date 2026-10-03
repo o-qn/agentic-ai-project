@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Owner · Talent{% endblock %}
+{% block navigation %}<nav aria-label="Owner workspace"><a href="/" class="nav-item"><span aria-hidden="true">◫</span> HR workspace</a><a href="/owner" class="nav-item active" aria-current="page"><span aria-hidden="true">⌁</span> Usage &amp; models</a></nav>{% endblock %}
+{% block footer_url %}/{% endblock %}{% block footer_label %}Back to recruitment →{% endblock %}
+{% block content %}
+<div class="topline"><span>Workspace <span class="separator">/</span> Owner</span><span class="advisory">Local access</span></div>
+<header class="page-header"><div><span class="eyebrow">WORKSPACE OWNER</span><h1>Usage &amp; models</h1><p>See what’s running, what’s been used, and what needs attention.</p></div><button id="refresh-owner">↻ Refresh usage</button></header>
+<p id="owner-notice" class="notice" role="status">Loading workspace usage…</p>
+<div id="owner-stats" class="stats"></div>
+<div class="model-grid">
+  <section class="panel"><span class="eyebrow">CANDIDATE ASSESSMENT</span><h2 id="assessment-provider">—</h2><div id="assessment-model" class="model-name">—</div><div id="assessment-status"></div><p id="assessment-help"></p><div id="assessment-budget"></div></section>
+  <section id="settings" class="panel"><span class="eyebrow">CV SEARCH</span><h2 id="search-provider">—</h2><div id="search-model" class="model-name">—</div><label for="embedding-provider">Embedding provider</label><select id="embedding-provider"><option value="ollama">Local hosted · Ollama</option><option value="voyage">Voyage · hosted API</option></select><p id="embedding-help" class="quiet"></p></section>
+</div>
+<section class="panel"><div class="section-head"><div><h2>Activity over the last 7 days</h2><p>Completed assessments and recorded embedding runs · UTC days.</p></div><div class="legend"><span><i class="dot supported"></i> Assessments</span><span><i class="dot accent-dot"></i> Embedding runs</span></div></div><div id="usage-chart"></div></section>
+<div class="model-grid"><section class="panel"><h2>Assessment history</h2><p>Completed assessments grouped by their recorded model.</p><div id="assessment-history"></div></section><section class="panel"><h2>Embedding history</h2><p>Recorded sections grouped by model. Includes document and query embeddings.</p><div id="embedding-history"></div><p id="ledger-note" class="quiet"></p></section></div>
+<section class="panel"><div class="section-head"><div><h2>Workspace health</h2><p>Processing and synchronization details for maintenance.</p></div></div><div id="owner-health" class="stats"></div><div id="owner-errors"></div></section>
+<details class="panel maintenance"><summary>Maintenance</summary><p>Reset completed and failed local processing records. Associated local application records may also be removed. Drive files are unaffected.</p><button id="reset" class="danger">Reset completed / failed records</button></details>
+<p class="quiet">This owner page uses the application’s existing local-access boundary. Separate user accounts and owner permissions are not configured.</p>
+{% endblock %}
+{% block scripts %}<script src="/static/owner.js"></script>{% endblock %}

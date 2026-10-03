@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf }}">
+  <title>{% block title %}Talent workspace{% endblock %}</title>
+  <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to content</a>
+  <aside class="sidebar">
+    <a class="brand" href="/" aria-label="Talent workspace home"><span class="brand-symbol" aria-hidden="true">t.</span><span>talent<span class="brand-sub">RECRUITMENT WORKSPACE</span></span></a>
+    <span class="nav-label">WORKSPACE</span>
+    {% block navigation %}{% endblock %}
+    <div class="sidebar-bottom"><span class="sidebar-caption">A clearer view of your next hire.</span><a class="owner-link" href="{% block footer_url %}/owner{% endblock %}">{% block footer_label %}Workspace owner ↗{% endblock %}</a><div class="workspace-badge"><span class="avatar small-avatar">HR</span><span>Recruitment team<small>Local workspace</small></span></div></div>
+  </aside>
+  <main id="main" tabindex="-1">{% block content %}{% endblock %}</main>
+  <div id="toast" role="alert" hidden></div>
+  <script src="/static/common.js"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

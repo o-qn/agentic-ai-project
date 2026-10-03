@@ -1,114 +1,220 @@
 'use strict';
-const $=s=>document.querySelector(s), csrf=$('meta[name="csrf-token"]').content;
-let current='', detail=null, status=null, reviewId=null, editRole=null, draftHash=null, refreshing=false, lastRefresh=0;
-function node(tag,text,cls){const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;}
-function clear(el){el.replaceChildren();}
-function toast(text){$('#toast').textContent=text;$('#toast').hidden=false;setTimeout(()=>$('#toast').hidden=true,7000);}
-async function api(path,body){const r=await fetch(path,{method:body===undefined?'GET':'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},body:body===undefined?undefined:JSON.stringify(body)});const data=await r.json();if(!r.ok)throw Error(data.error||'Request failed');return data;}
-const date=t=>t?new Date(t*1000).toLocaleString():'Not yet';
-function link(text,url){const a=node('a',text);a.href=url;a.target='_blank';a.rel='noreferrer';return a;}
-function btn(text,action){const b=node('button',text);b.onclick=()=>Promise.resolve(action()).catch(e=>toast(e.message));return b;}
-function label(app){return app.contact.name||'Name not provided';}
-async function evidence(id){const data=await api('/api/applications/'+id);const panel=$('#evidence');clear(panel);const contact=JSON.parse(data.contact);panel.append(node('h3',contact.name||'Name not provided'));const active=data.assessments.find(a=>a.version===data.version&&a.rubric_id===detail.role.rubric_id);const sections=JSON.parse(data.sections||'[]');const rubric=detail.rubric?JSON.parse(detail.rubric.body):{criteria:[]};if(active){panel.append(node('p',`${active.score}/100 · ${data.status}`));for(const f of JSON.parse(active.body).findings){const c=rubric.criteria.find(c=>c.id===f.criterion_id);const card=node('article',undefined,'answer');const points=(c?.weight||0)*({supported:1,partial:.5,not_demonstrated:0}[f.level]);card.append(node('h3',c?.description||f.criterion_id),node('p',`${f.level.replaceAll('_',' ')} · ${points} of ${c?.weight||0} points`),node('p',f.explanation));if(f.missing_information)card.append(node('p','Not demonstrated: '+f.missing_information));for(const cite of f.evidence){card.append(node('blockquote',cite.quote),node('small',sections.find(s=>s.id===cite.section_id)?.location||cite.section_id));}panel.append(card);}}else panel.append(node('p',data.review_reason||'No completed assessment for the current rubric.'));const source=node('details');source.append(node('summary','All extracted source sections'));for(const s of sections)source.append(node('h4',s.location),node('pre',s.text));panel.append(source);const audit=node('details');audit.append(node('summary','Processing action records'),node('pre',JSON.stringify(data.actions,null,2)));panel.append(audit);$('#evidence-panel').open=true;$('#evidence-panel').scrollIntoView({behavior:'smooth'});}
-
-function table(){if(!detail)return;const tbody=$('#application-rows');clear(tbody);const rankings=new Map(detail.ranked.map(a=>[a.id,a]));let apps=[...detail.applications];const filter=$('#filter').value.toLowerCase();apps=apps.filter(a=>(label(a)+' '+a.filename+' '+a.status).toLowerCase().includes(filter));const sort=$('#sort').value;apps.sort((a,b)=>sort==='name'?label(a).localeCompare(label(b)):sort==='status'?a.status.localeCompare(b.status):(rankings.get(b.id)?.score??-1)-(rankings.get(a.id)?.score??-1));for(const app of apps){const tr=node('tr'),name=node('td',label(app));name.append(node('small',app.filename));tr.append(name);const r=rankings.get(app.id),statusCell=node('td');statusCell.append(node('span',app.status,'status-pill status-'+app.status.replaceAll('_','-')));tr.append(node('td',r?`${r.score} · #${r.rank}${r.tie?' (tie)':''}`:'Unranked'),statusCell,node('td',app.index_status));const actions=node('td');actions.append(btn('Inspect',()=>evidence(app.id)),' ',btn('Review',()=>openReview(app)));tr.append(actions);tbody.append(tr);}if(!apps.length){const tr=node('tr'),td=node('td','No applications match this view.');td.colSpan=5;tr.append(td);tbody.append(tr);}}
-function openReview(app){reviewId=app.id;$('#review').open=true;$('#review-controls').hidden=false;$('#review-title').textContent=`Review ${label(app)} · #${app.id}`;$('#review').scrollIntoView({behavior:'smooth'});}
-async function refreshRole(){if(!current)return;detail=await api('/api/roles/'+encodeURIComponent(current));const r=detail.role;$('#breadcrumb').textContent=r.name;$('#report-link').href=r.report_id?'https://drive.google.com/file/d/'+r.report_id+'/view':'https://drive.google.com/drive/folders/'+r.id;$('#report-link').textContent=r.report_id?'Open Drive report ↗':'Open role folder ↗';if(status?.demo){$('#report-link').href='/api/roles/'+current+'/xlsx';$('#report-link').textContent='Download demo report ↓';}else if(status?.poc_mode&&r.revision>r.synced_revision){$('#report-link').href='/api/roles/'+encodeURIComponent(current)+'/xlsx';$('#report-link').textContent='Download local report ↓';}clear($('#folder-links'));if(!status?.demo)for(const [name,id]of Object.entries(JSON.parse(r.folders)))$('#folder-links').append(link(name+' ↗','https://drive.google.com/drive/folders/'+id));$('#csv-link').href='/api/roles/'+encodeURIComponent(current)+'/csv';$('#jd').textContent=r.jd||'No job_description.txt found. Add the role requirements in Drive, then check again.';
-if(editRole!==current){$('#rubric-json').value=detail.rubric?JSON.stringify(JSON.parse(detail.rubric.body),null,2):'';editRole=current;draftHash=detail.rubric?.jd_hash||r.jd_hash;}
-const apps=detail.applications, stats=[['Discovered',apps.length],['Queued',apps.filter(a=>a.status==='queued').length],['Completed',apps.filter(a=>a.status==='completed').length],['Needs review',apps.filter(a=>a.status==='review').length],['Failed jobs',detail.jobs.filter(j=>j.state==='failed').length]];clear($('#stats'));for(const [name,count]of stats){const item=node('div',undefined,'stat');item.append(node('span',name),node('strong',String(count)));$('#stats').append(item);}
-clear($('#top'));for(const app of detail.top){const card=node('article',undefined,'card');card.append(node('span',`#${app.rank}${app.tie?' · tied score':''}`,'rank'));const sc=node('span',String(app.score),'score');sc.append(node('small',' /100'));card.append(sc,node('h3',label(app)));const findings=JSON.parse(app.body).findings;for(const f of findings.filter(f=>f.level==='supported').slice(0,3))card.append(node('span',f.criterion_id.replaceAll('_',' '),'pill'));card.append(node('p',findings.filter(f=>f.level!=='supported').map(f=>f.missing_information||f.criterion_id+' not fully demonstrated').join('; ')||'Evidence addresses every approved criterion.'));card.append(link('Original CV ↗',status?.demo?'/api/applications/'+app.id+'/source':'https://drive.google.com/file/d/'+app.file_id+'/view'),btn('View score evidence',()=>evidence(app.id)));$('#top').append(card);}if(!detail.top.length)$('#top').append(node('div',r.paused?'Ranking is paused. Review and approve the role rubric to begin.':'Completed, comparable assessments will appear here.','empty'));if(detail.ranked.length>3&&detail.ranked[2].score===detail.ranked[3].score)$('#top').append(node('p','A tie extends beyond these three cards. All candidates with the same score share the rank in the table.','quiet'));
-table();clear($('#review-list'));for(const app of apps.filter(a=>a.status==='review')){const row=node('div',undefined,'review-item');row.append(node('span',`${label(app)} — ${app.review_reason}`),btn('Inspect & decide',()=>{openReview(app);return evidence(app.id);}));$('#review-list').append(row);}if(!$('#review-list').children.length)$('#review-list').append(node('p','No applications currently need review.'));
-clear($('#activity'));if(detail.report_retry?.error)$('#activity').append(node('p',`Report synchronization: ${detail.report_retry.error} at ${date(detail.report_retry.at)} · ${detail.report_retry.attempts} attempts`,'error'));if(r.jd_error)$('#activity').append(node('p','Role requirements could not be read: '+r.jd_error+'. Ranking remains paused.','error'));$('#activity').append(node('p',`Last scan: ${date(status?.last_scan)} · Next: ${date(status?.next_scan)} · Report uploaded: ${date(r.uploaded_at)}${r.revision>r.synced_revision?' · Locally saved, Drive sync pending':''}`,'quiet'));if(status?.active_job)$('#activity').append(node('p',`Active application #${status.active_job.application_id} · ${status.active_job.step} · ${Math.round(Date.now()/1000-status.active_job.started)} seconds elapsed`));for(const job of detail.jobs.slice(0,15)){const reason=job.application_status==='review'&&job.review_reason?' · Review reason: '+job.review_reason:'';$('#activity').append(node('div',`Application #${job.application_id} · ${job.state} / ${job.step} · ${job.attempts} retries${reason}${job.error?' · Historical error: '+job.error+' at '+date(job.error_at):''}`,'log'));}
+let current = '', detail = null, status = null, reviewId = null, editRole = null, draftHash = null;
+let refreshing = false, roleRequest = 0, scoreRange = null, criteria = [], lastRefresh = 0;
+const stageNames = { pending: 'Awaiting screening', completed: 'Assessed', review: 'Needs review', duplicate: 'Duplicate CV', failed: 'Needs attention' };
+const viewTitles = { overview: ['Job overview', 'Know your talent pool. Find the people worth a closer look.'], candidates: ['Candidates', 'A clear view of every applicant, with the CV evidence to back it up.'], reviews: ['Needs review', 'Give flagged applications a thoughtful second look.'], criteria: ['Job criteria', 'Define what a strong application looks like for this job.'] };
+function showView(view, focus = false) {
+  if (!viewTitles[view]) view = 'overview';
+  document.querySelectorAll('[data-view]').forEach(element => element.hidden = element.dataset.view !== view);
+  document.querySelectorAll('.nav-item[data-view-nav]').forEach(element => { const active = element.dataset.viewNav === view; element.classList.toggle('active', active); if (active) element.setAttribute('aria-current', 'page'); else element.removeAttribute('aria-current'); });
+  $('#page-title').textContent = viewTitles[view][0]; $('#page-subtitle').textContent = viewTitles[view][1];
+  if (focus) { history.replaceState(null, '', '#' + view); $('#main').focus({ preventScroll: true }); window.scrollTo({ top: 0, behavior: 'instant' }); }
 }
-async function refresh(){if(refreshing)return;refreshing=true;try{status=await api('/api/status');lastRefresh=Date.now();renderProgress();const options=status.roles.map(r=>[r.id,r.name]);const roleSelect=$('#role');if(JSON.stringify([...roleSelect.options].map(o=>[o.value,o.text]))!==JSON.stringify(options)){clear(roleSelect);for(const [id,name]of options){const o=node('option',name);o.value=id;roleSelect.append(o);}}if(!options.some(([id])=>id===current))current=options[0]?.[0]||'';roleSelect.value=current;$('#automatic').checked=status.automatic||!!status.automatic_pause;$('#automatic').title=status.automatic_pause?'Paused until the hosted request quota resets':'Enable automatic CV processing';$('#upload').hidden=!!status.demo;renderSettings();const notes=[];notes.push('Assessment: '+(status.model_provider==='agentrouter'?'Agent Router (Codex CLI)':'Local Ollama')+' · '+status.model+'. Embeddings: '+(status.embedding_provider==='voyage'?'Voyage hosted':'local CPU')+'.' );if(status.model_provider==='agentrouter')notes.push('CV text is sent to Agent Router.');if(status.hosted_requests_remaining===0)notes.push('Hosted daily limit reached. Auto process is paused until the next UTC quota window.');if(status.poc_mode)notes.push('PROOF OF CONCEPT · Unvalidated AI and automatic draft scoring rules. Results may be wrong.');if(status.demo)notes.push('SYNTHETIC DEMO · Scores and applicants are test fixtures. No live Drive or AI inference.');if(!status.drive_authorized&&!status.demo)notes.push('Google sign-in required: run hr-agent auth.');if(!status.model_ready&&!status.demo&&!status.poc_mode)notes.push('Configure and validate local models before enabling screening.');if(!status.service_heartbeat||Date.now()/1000-status.service_heartbeat>650)notes.push('Scanner service has not checked in recently.');if(status.missed_scan)notes.push('A scan interval was missed; catch-up runs when the service resumes.');if(status.scan_error)notes.push(`Scan error at ${date(status.scan_error.at)}: ${status.scan_error.message}`);$('#notice').textContent=notes.join(' ')||'Local workspace connected. Assessments remain advisory; HR makes all hiring decisions.';await refreshRole();const b=await api('/api/blacklist');clear($('#blacklist-list'));for(const entry of b.entries){const row=node('div',undefined,'review-item');row.append(node('span',`${entry.kind} · ${entry.identifier.slice(0,16)}… · ${entry.reason} · ${entry.active?'active':'restored'} · expires ${date(entry.expires)}`));if(entry.active)row.append(btn('Restore hold',async()=>{await api('/api/blacklist/'+entry.id+'/restore',{actor:$('#actor').value});await refresh();}));$('#blacklist-list').append(row);}if(!b.entries.length)$('#blacklist-list').append(node('p','No confirmed document holds.'));}catch(e){toast(e.message);}finally{refreshing=false;}}
-$('#role').onchange=async()=>{current=$('#role').value;await refreshRole();};$('#filter').oninput=table;$('#sort').onchange=table;
-$('#check').onclick=()=>api('/api/check',{}).then(()=>toast('Scan requested. The running scanner service will pick it up.')).catch(e=>toast(e.message));
-$('#reset').onclick=async()=>{
- if(!confirm('Remove completed and failed jobs from the local database? Drive files will not be changed.'))return;
- const b=$('#reset');b.disabled=true;
- try{const result=await api('/api/reset',{confirm:true});toast(`Reset ${result.jobs} terminal job${result.jobs===1?'':'s'} and ${result.applications} local application record${result.applications===1?'':'s'}. Drive files were not changed.`);await refresh();}
- catch(e){toast(e.message);}finally{b.disabled=false;}
+document.querySelectorAll('[data-view-nav]').forEach(element => element.onclick = event => { event.preventDefault(); showView(element.dataset.viewNav, true); });
+window.addEventListener('hashchange', () => showView(location.hash.slice(1)));
+showView(location.hash.slice(1));
+function label(application) { return application.contact.name || 'Name not provided'; }
+function stage(application) { if (['completed', 'review', 'duplicate'].includes(application.status)) return application.status; const job = detail.jobs.find(item => item.application_id === application.id); return job?.state === 'failed' ? 'failed' : 'pending'; }
+function sourceURL(application) { return status.demo ? '/api/applications/' + application.id + '/source' : 'https://drive.google.com/file/d/' + encodeURIComponent(application.file_id) + '/view'; }
+function avatar(name) { return node('span', name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase(), 'avatar'); }
+function resetFilters() { $('#filter').value = ''; $('#status-filter').value = 'all'; $('#sort').value = 'score'; scoreRange = null; table(); }
+function table() {
+  if (!detail) return;
+  const rankings = new Map(detail.ranked.map(application => [application.id, application]));
+  const search = $('#filter').value.trim().toLowerCase(), filter = $('#status-filter').value, sort = $('#sort').value;
+  let applications = detail.applications.filter(application => (label(application) + ' ' + (application.contact.email || '') + ' ' + application.filename).toLowerCase().includes(search) && (filter === 'all' || stage(application) === filter));
+  if (scoreRange) applications = applications.filter(application => { const rank = rankings.get(application.id); return rank && rank.score >= scoreRange.min && rank.score < scoreRange.max; });
+  applications.sort((a, b) => sort === 'name' ? label(a).localeCompare(label(b)) : sort === 'newest' ? b.created - a.created : (rankings.get(b.id)?.score ?? -1) - (rankings.get(a.id)?.score ?? -1) || a.id - b.id);
+  const tbody = $('#application-rows'); clear(tbody);
+  $('#candidate-count').textContent = applications.length + ' of ' + detail.applications.length;
+  $('#range-filter').hidden = !scoreRange; $('#range-filter').textContent = scoreRange ? 'Showing scores ' + scoreRange.label + '. Select Clear filters to return to the full pool.' : '';
+  for (const application of applications) {
+    const row = node('tr'), nameCell = node('td'), identity = node('div', undefined, 'candidate-name'), text = node('div');
+    text.append(node('strong', label(application)), node('small', application.contact.email || application.filename)); identity.append(avatar(label(application)), text); nameCell.append(identity);
+    const rank = rankings.get(application.id), scoreCell = node('td'), statusCell = node('td'), actionCell = node('td'), actions = node('div', undefined, 'table-actions');
+    scoreCell.append(node('span', rank ? rank.score + '/100' : '—', rank ? 'table-score' : 'quiet')); if (rank) scoreCell.append(node('small', ' · #' + rank.rank + (rank.tie ? ' tied' : '')));
+    statusCell.append(node('span', stageNames[stage(application)], 'status-pill status-' + stage(application)));
+    actions.append(btn('View profile', () => evidence(application.id))); if (stage(application) === 'review' || stage(application) === 'failed') actions.append(btn('Review', () => openReview(application)));
+    actionCell.append(actions); row.append(nameCell, scoreCell, statusCell, actionCell); tbody.append(row);
+  }
+  if (!applications.length) { const row = node('tr'), cell = node('td', detail.applications.length ? 'No candidates match these filters. Try clearing your filters.' : 'No CVs yet. Upload a CV or sync the job’s Drive folder.'); cell.colSpan = 4; row.append(cell); tbody.append(row); }
+}
+function renderCharts() {
+  const analytics = detail.analytics;
+  clear($('#stats'));
+  const stats = [['Applications', number(analytics.total), 'All CVs for this job'], ['Assessed', number(analytics.pipeline.completed), 'Screening completed'], ['Needs review', number(analytics.pipeline.review), 'Waiting for your team'], ['Average match', analytics.average_score === null ? '—' : analytics.average_score + '/100', 'Current comparable assessments']];
+  for (const [name, value, description] of stats) $('#stats').append(stat(name, value, description));
+  const pipeline = $('#pipeline-chart'); clear(pipeline);
+  for (const key of Object.keys(stageNames)) {
+    const count = analytics.pipeline[key];
+    const row = btn('', () => { resetFilters(); $('#status-filter').value = key; table(); showView('candidates', true); }, 'chart-row');
+    const header = node('span', undefined, 'chart-row-heading'); header.append(node('span', stageNames[key]), node('strong', number(count)));
+    row.append(header, bar([[count, key]], analytics.total, stageNames[key] + ': ' + count + ' of ' + analytics.total)); row.setAttribute('aria-label', stageNames[key] + ': ' + count + '. View candidates'); pipeline.append(row);
+  }
+  $('#score-sample').textContent = analytics.comparable + ' assessed'; $('#criteria-sample').textContent = analytics.comparable + ' assessed';
+  const chart = $('#score-chart'); clear(chart);
+  if (!analytics.comparable) chart.append(node('div', 'Score insights appear when current assessments are available.', 'empty'));
+  else {
+    const svg = svgElement('svg', { viewBox: '0 0 300 136', role: 'img', 'aria-label': 'Candidate counts by score: ' + analytics.score_distribution.map(bucket => bucket.label + ': ' + bucket.count).join(', '), class: 'histogram' });
+    const maximum = Math.max(1, ...analytics.score_distribution.map(bucket => bucket.count));
+    for (const y of [31, 65, 99, 122]) svg.append(svgElement('line', { x1: 0, x2: 300, y1: y, y2: y, class: 'axis-line' }));
+    analytics.score_distribution.forEach((bucket, index) => { const height = bucket.count / maximum * 94, x = 12 + index * 60; svg.append(svgElement('rect', { x, y: 122 - height, width: 36, height, rx: 5, class: 'supported' })); const text = svgElement('text', { x: x + 18, y: 114 - height, 'text-anchor': 'middle', class: 'count-text' }); text.textContent = bucket.count; svg.append(text); });
+    const labels = node('div', undefined, 'histogram-labels'); for (const bucket of analytics.score_distribution) { const button = btn(bucket.label, () => { resetFilters(); scoreRange = bucket; table(); showView('candidates', true); }); button.setAttribute('aria-label', 'Scores ' + bucket.label + ': ' + bucket.count + ' candidates. View candidates'); labels.append(button); }
+    chart.append(svg, labels);
+  }
+  const coverage = $('#criteria-chart'); clear(coverage);
+  if (!analytics.comparable || !analytics.criteria.length) coverage.append(node('div', 'Requirement insights appear after criteria are approved and candidates are assessed.', 'empty'));
+  else for (const criterion of analytics.criteria) {
+    const row = node('div', undefined, 'criterion-row'), header = node('div', undefined, 'chart-row-heading');
+    header.append(node('span', criterion.description), node('strong', Math.round(criterion.supported / analytics.comparable * 100) + '%'));
+    const description = criterion.supported + ' supported · ' + criterion.partial + ' partial · ' + criterion.not_demonstrated + ' not demonstrated';
+    row.append(header, bar([[criterion.supported, 'supported'], [criterion.partial, 'partial'], [criterion.not_demonstrated, 'missing']], analytics.comparable, criterion.description + ': ' + description), node('small', description)); coverage.append(row);
+  }
+  $('#chart-note').textContent = 'Score and requirement charts use ' + analytics.comparable + ' current comparable assessments. Review flags, duplicates and outdated assessments are excluded. Scores guide CV review; they are not hiring decisions.';
+}
+function renderTop() {
+  clear($('#top'));
+  const definitions = new Map((detail.rubric ? JSON.parse(detail.rubric.body).criteria : []).map(criterion => [criterion.id, criterion.description]));
+  for (const application of detail.top) {
+    const card = node('article', undefined, 'card'), top = node('div', undefined, 'card-top'), score = node('span', application.score, 'score'); score.append(node('small', ' /100')); top.append(node('span', '#' + application.rank + (application.tie ? ' · tied' : ''), 'rank'), score);
+    card.append(top, avatar(label(application)), node('h3', label(application)), node('small', application.filename, 'candidate-file'));
+    const findings = JSON.parse(application.body).findings, pills = node('div', undefined, 'pills');
+    for (const finding of findings.filter(finding => finding.level === 'supported').slice(0, 2)) pills.append(node('span', definitions.get(finding.criterion_id) || finding.criterion_id.replaceAll('_', ' '), 'pill'));
+    const gaps = findings.filter(finding => finding.level !== 'supported');
+    card.append(pills, node('p', gaps.length ? gaps.length + ' requirement' + (gaps.length === 1 ? '' : 's') + ' to explore further. Check the evidence before deciding.' : 'The CV provides evidence for all approved requirements.'));
+    const actions = node('div', undefined, 'card-actions'); actions.append(link('Original CV ↗', sourceURL(application)), btn('View profile →', () => evidence(application.id))); card.append(actions); $('#top').append(card);
+  }
+  if (!detail.top.length) $('#top').append(node('div', detail.role.paused ? 'Approve this job’s criteria to start comparing candidates.' : 'Candidate profiles will appear here once screening is complete.', 'empty'));
+  if (detail.ranked.length > 3 && detail.ranked[2].score === detail.ranked[3].score) $('#top').append(node('p', 'More candidates share the third score. View all candidates to see everyone with that rank.', 'quiet'));
+}
+async function evidence(id) {
+  const selectedRole = current, selectedDetail = detail;
+  const data = await api('/api/applications/' + id); if (selectedRole !== current) return;
+  const panel = $('#evidence'); clear(panel); const contact = JSON.parse(data.contact), sections = JSON.parse(data.sections || '[]');
+  panel.append(node('h2', contact.name || 'Name not provided'), node('p', [contact.email, contact.phone].filter(Boolean).join(' · ')), link('Open original CV ↗', sourceURL(data)));
+  const assessment = data.assessments.find(item => item.version === data.version && item.rubric_id === selectedDetail.role.rubric_id);
+  const rubric = selectedDetail.rubric ? JSON.parse(selectedDetail.rubric.body) : { criteria: [] };
+  if (assessment) {
+    panel.append(node('p', 'Job match: ' + assessment.score + '/100 · ' + (stageNames[data.status] || 'Awaiting screening') + '. Review the supporting CV evidence.'));
+    for (const finding of JSON.parse(assessment.body).findings) {
+      const criterion = rubric.criteria.find(item => item.id === finding.criterion_id), card = node('article', undefined, 'answer');
+      const points = (criterion?.weight || 0) * ({ supported: 1, partial: .5, not_demonstrated: 0 }[finding.level]);
+      card.append(node('h3', criterion?.description || finding.criterion_id), node('p', finding.level.replaceAll('_', ' ') + ' · ' + points + ' of ' + (criterion?.weight || 0) + ' points'), node('p', finding.explanation));
+      if (finding.missing_information) card.append(node('p', 'Follow up: ' + finding.missing_information));
+      for (const citation of finding.evidence) card.append(node('blockquote', citation.quote), node('small', sections.find(section => section.id === citation.section_id)?.location || 'CV passage'));
+      panel.append(card);
+    }
+  } else panel.append(node('p', data.review_reason || 'There is no current assessment yet.'));
+  const source = node('details'); source.append(node('summary', 'Read the extracted CV text')); for (const section of sections) source.append(node('h4', section.location), node('pre', section.text)); panel.append(source);
+  if (data.status === 'review') panel.append(btn('Review this application', () => { $('#evidence-panel').close(); openReview({ ...data, contact }); }, 'primary'));
+  if (!$('#evidence-panel').open) $('#evidence-panel').showModal();
+}
+$('#close-evidence').onclick = () => $('#evidence-panel').close();
+function openReview(application) { reviewId = application.id; showView('reviews', true); $('#review-controls').hidden = false; $('#review-title').textContent = 'Review ' + label(application); $('#review-reason').value = ''; $('#review-controls').scrollIntoView({ behavior: 'smooth' }); $('#review-actor').focus({ preventScroll: true }); }
+function renderReviews() {
+  const applications = detail.applications.filter(application => ['review', 'failed'].includes(stage(application)));
+  $('#review-count').textContent = applications.length;
+  const box = $('#review-list'); clear(box);
+  for (const application of applications) { const row = node('div', undefined, 'review-item'), text = node('div'); text.append(node('strong', label(application)), node('p', application.review_reason || 'Screening could not finish. Inspect the CV and retry if appropriate.')); row.append(text, btn('Inspect & review', async () => { openReview(application); await evidence(application.id); })); box.append(row); }
+  if (!applications.length) box.append(node('div', 'You’re all caught up. No applications need review for this job.', 'empty'));
+  if (reviewId && !detail.applications.some(application => application.id === reviewId)) { reviewId = null; $('#review-controls').hidden = true; }
+}
+function readCriteria() {
+  return [...$('#criteria-editor').children].map((element, index) => { const criterion = { ...criteria[index] }; element.querySelectorAll('[data-field]').forEach(input => criterion[input.dataset.field] = input.dataset.field === 'weight' ? Number(input.value) : input.value.trim()); return criterion; });
+}
+function weightTotal() { const total = readCriteria().reduce((sum, criterion) => sum + criterion.weight, 0); $('#weight-total').textContent = total + ' / 100 points'; $('#weight-total').classList.toggle('invalid', Math.abs(total - 100) > .00001); }
+function renderEditor() {
+  clear($('#criteria-editor'));
+  for (const criterion of criteria) {
+    const card = node('article', undefined, 'criterion-editor'), fields = node('div', undefined, 'form-grid');
+    function field(key, title, type = 'text') { const wrapper = node('label', title), input = node('input'); input.type = type; input.dataset.field = key; input.value = criterion[key]; input.required = true; if (type === 'number') { input.min = '.01'; input.max = '100'; input.step = '.01'; } else { input.minLength = 5; input.maxLength = 1000; } input.oninput = weightTotal; wrapper.append(input); return wrapper; }
+    fields.append(field('description', 'Requirement'), field('weight', 'Points', 'number')); card.append(fields);
+    const rules = node('details'); rules.append(node('summary', 'Define the evidence for each level'), field('supported', 'Supported evidence'), field('partial', 'Partial evidence'), field('not_demonstrated', 'Not demonstrated')); card.append(rules, btn('Remove requirement', () => { criteria = readCriteria().filter(item => item.id !== criterion.id); renderEditor(); })); $('#criteria-editor').append(card);
+  }
+  weightTotal(); $('#add-criterion').disabled = criteria.length >= 15;
+}
+async function refreshRole() {
+  if (!current) return; const roleId = current, requestId = ++roleRequest;
+  const result = await api('/api/roles/' + encodeURIComponent(roleId)); if (roleId !== current || requestId !== roleRequest) return;
+  detail = result; const role = detail.role;
+  $('#breadcrumb').textContent = role.name;
+  $('#report-link').href = role.report_id ? 'https://drive.google.com/file/d/' + encodeURIComponent(role.report_id) + '/view' : 'https://drive.google.com/drive/folders/' + encodeURIComponent(role.id);
+  $('#report-link').textContent = role.report_id ? 'Open report ↗' : 'Job folder ↗';
+  if (detail.local_report_ready && (status.demo || (status.poc_mode && role.revision > role.synced_revision))) { $('#report-link').href = '/api/roles/' + encodeURIComponent(current) + '/xlsx'; $('#report-link').textContent = 'Download report ↓'; }
+  $('#csv-link').href = '/api/roles/' + encodeURIComponent(current) + '/csv';
+  clear($('#folder-links')); if (!status.demo) for (const [name, id] of Object.entries(JSON.parse(role.folders))) $('#folder-links').append(link(name + ' ↗', 'https://drive.google.com/drive/folders/' + encodeURIComponent(id)));
+  $('#jd').textContent = role.jd || 'Add this job’s description to its Drive folder, then sync CVs.';
+  if (editRole !== current) { criteria = detail.rubric ? JSON.parse(detail.rubric.body).criteria : []; editRole = current; draftHash = detail.rubric?.jd_hash || role.jd_hash; renderEditor(); }
+  renderCharts(); renderTop(); table(); renderReviews(); renderNotice(); renderProgress();
+}
+function renderNotice() {
+  const notes = [];
+  if (status.demo) notes.push('Demo workspace · Sample candidates and scores.');
+  if (detail?.role.paused) notes.push('This job needs approved criteria. Open Job criteria to get screening started.');
+  if (!status.drive_authorized && !status.demo) notes.push('Drive needs reconnecting. Contact the workspace owner.');
+  if (serviceOffline(status)) notes.push('CV syncing is currently offline. Contact the workspace owner to resume updates.');
+  if (status.scan_error) notes.push('CV sync needs attention. The workspace owner can see the details.');
+  if (status.automatic_pause) notes.push('Screening is temporarily paused. Contact the workspace owner.');
+  if (status.poc_mode && !status.demo) notes.push('Trial workspace · Review draft scores and criteria before making decisions.');
+  $('#notice').classList.toggle('warning', !!(detail?.role.paused || (!status.drive_authorized && !status.demo) || status.scan_error || status.automatic_pause || serviceOffline(status)));
+  $('#notice').textContent = notes.join(' ') || 'Workspace up to date · Your team reviews the evidence and makes the hiring decisions.';
+}
+async function refreshHolds() {
+  const result = await api('/api/blacklist'); clear($('#blacklist-list'));
+  for (const entry of result.entries) { const row = node('div', undefined, 'review-item'); row.append(node('span', entry.reason + ' · ' + (entry.active ? 'On hold' : 'Restored') + ' · expires ' + date(entry.expires))); if (entry.active) row.append(btn('Restore document', async () => { const actor = $('#hold-actor').value.trim(); if (!actor) throw Error('Enter your name before restoring a document.'); await api('/api/blacklist/' + entry.id + '/restore', { actor }); await refreshHolds(); })); $('#blacklist-list').append(row); }
+  if (!result.entries.length) $('#blacklist-list').append(node('p', 'No document holds.'));
+}
+$('#blacklist').ontoggle = () => { if ($('#blacklist').open) refreshHolds().catch(error => toast(error.message)); };
+async function refresh() {
+  if (refreshing) return; refreshing = true;
+  try {
+    status = await api('/api/status'); lastRefresh = Date.now(); const select = $('#role');
+    const options = status.roles.map(role => [role.id, role.name]);
+    if (JSON.stringify([...select.options].map(option => [option.value, option.text])) !== JSON.stringify(options)) { clear(select); for (const [id, name] of options) { const option = node('option', name); option.value = id; select.append(option); } }
+    if (!options.some(([id]) => id === current)) { current = options[0]?.[0] || ''; detail = null; editRole = null; reviewId = null; $('#review-controls').hidden = true; resetFilters(); }
+    select.value = current; $('#no-roles').hidden = !!current; $('#job-workspace').hidden = !current;
+    $('#upload').disabled = !current || !!status.demo; $('#check').disabled = !!status.demo;
+    $('#automatic').checked = status.automatic || !!status.automatic_pause; $('#automatic').disabled = !!status.demo;
+    $('#report-link').hidden = !current; $('#csv-link').hidden = !current;
+    await refreshRole(); renderNotice();
+  } catch (error) { $('#notice').textContent = 'Workspace connection interrupted. Reconnecting…'; $('#notice').classList.add('warning'); }
+  finally { refreshing = false; }
+}
+$('#role').onchange = async () => { current = $('#role').value; detail = null; reviewId = null; $('#review-controls').hidden = true; $('#evidence-panel').close(); $('#chat-answer').replaceChildren(); resetFilters(); try { await refreshRole(); } catch (error) { toast(error.message); } };
+$('#filter').oninput = table; $('#sort').onchange = table; $('#status-filter').onchange = table; $('#clear-filters').onclick = resetFilters;
+$('#check').onclick = async () => { try { await api('/api/check', {}); toast(serviceOffline(status) ? 'CV sync queued. It will start when the workspace owner resumes the sync service.' : 'CV sync requested. New files will appear when synchronization finishes.'); } catch (error) { toast(error.message); } };
+$('#automatic').onchange = async () => { try { await api('/api/automatic', { enabled: $('#automatic').checked }); await refresh(); } catch (error) { $('#automatic').checked = status.automatic; toast(error.message); } };
+$('#upload').onclick = () => { if (!status.drive_authorized) { toast('Ask the workspace owner to reconnect Drive before uploading.'); return; } $('#cv-file').click(); };
+$('#cv-file').onchange = async () => {
+  const file = $('#cv-file').files[0]; if (!file) return; const roleId = current; const form = new FormData(); form.append('file', file); $('#upload').disabled = true;
+  try { const response = await fetch('/api/roles/' + encodeURIComponent(roleId) + '/upload', { method: 'POST', headers: { 'X-CSRF-Token': csrf }, body: form }); const data = await response.json(); if (!response.ok) throw Error(data.error || 'Upload failed'); toast(data.filename + ' uploaded. It will be screened when Screen new CVs is enabled.'); await refresh(); }
+  catch (error) { toast(error.message); } finally { $('#upload').disabled = !current || !!status.demo; $('#cv-file').value = ''; }
 };
-$('#upload').onclick=()=>{if(status?.demo){toast('Upload is disabled in the synthetic demo.');return;}if(!status?.drive_authorized){toast('Google sign-in required: run hr-agent auth.');return;}if(!current){toast('Select a role first.');return;}$('#cv-file').click();};
-$('#cv-file').onchange=async()=>{const file=$('#cv-file').files[0];if(!file)return;const form=new FormData();form.append('file',file);const b=$('#upload');b.disabled=true;try{const r=await fetch('/api/roles/'+encodeURIComponent(current)+'/upload',{method:'POST',headers:{'X-CSRF-Token':csrf},body:form});const data=await r.json();if(!r.ok)throw Error(data.error||'Upload failed');toast('Uploaded '+data.filename+' to Incoming CVs. It will be discovered on the next scan; assessment waits for Auto process.');await refresh();}catch(e){toast(e.message);}finally{b.disabled=false;$('#cv-file').value='';}};
-$('#automatic').onchange=()=>api('/api/automatic',{enabled:$('#automatic').checked}).then(refresh).catch(e=>toast(e.message));
-$('#embedding-provider').onchange=async()=>{
- const select=$('#embedding-provider'), provider=select.value;
- if(provider==='voyage'&&!confirm('Voyage will send CV passages to its hosted embedding API and re-index completed CVs. Continue?')){select.value=status.embedding_provider;return;}
- try{await api('/api/embedding-provider',{provider,confirm:provider==='voyage'});toast(provider==='voyage'?'Voyage selected. Enable Auto process to re-index completed CVs.':'Local Ollama selected. Enable Auto process to rebuild the local index.');await refresh();}
- catch(e){select.value=status.embedding_provider;toast(e.message);}
+$('#add-criterion').onclick = () => { criteria = readCriteria(); criteria.push({ id: 'requirement_' + Date.now(), description: '', weight: 10, supported: 'Clear evidence of relevant work or a project.', partial: 'Relevant skill mentioned without work evidence.', not_demonstrated: 'No relevant evidence in the CV.' }); renderEditor(); };
+$('#draft').onclick = async () => {
+  if (editRole === current && JSON.stringify(readCriteria()) !== JSON.stringify(detail.rubric ? JSON.parse(detail.rubric.body).criteria : []) && !confirm('Replace your unsaved requirements with a new draft?')) return;
+  const roleId = current; $('#draft').disabled = true;
+  try { const data = await api('/api/roles/' + encodeURIComponent(roleId) + '/draft', {}); if (roleId !== current) return; criteria = data.rubric.criteria; draftHash = data.jd_hash; renderEditor(); toast('Draft requirements are ready. Review the evidence rules and points before applying.'); } catch (error) { toast(error.message); } finally { $('#draft').disabled = false; }
 };
-$('#settings').ontoggle=()=>{if($('#settings').open)loadUsage();};
-$('#draft').onclick=async()=>{const b=$('#draft');b.disabled=true;try{const data=await api('/api/roles/'+current+'/draft',{});$('#rubric-json').value=JSON.stringify(data.rubric,null,2);draftHash=data.jd_hash;toast('Draft ready for HR review. No ranking is enabled by this draft.');}catch(e){toast(e.message);}finally{b.disabled=false;}};
-$('#approve').onclick=async()=>{try{await api('/api/roles/'+current+'/approve',{rubric:JSON.parse($('#rubric-json').value),actor:$('#actor').value,jd_hash:draftHash,plan:'reassess_all',confirm_job_relevance:$('#relevance').checked});toast('Approved. All current applications will use the new rubric version.');await refresh();}catch(e){toast(e.message);}};
-$('#review-save').onclick=async()=>{
- const actor=$('#review-actor').value.trim(), reason=$('#review-reason').value.trim();
- if(!actor){toast('Enter your name in the review form.');$('#review-actor').focus();return;}
- if(!reason){toast('Enter a reason for this decision.');$('#review-reason').focus();return;}
- try{
-  await api('/api/review/'+reviewId,{action:$('#review-action').value,reason,actor});
-  toast('Review decision saved.');$('#review-controls').hidden=true;await refresh();
- }catch(e){toast(e.message);}
-};
-async function ask(){const question=$('#question').value;$('#chat-answer').textContent='Searching the selected role…';try{const result=await api('/api/roles/'+current+'/chat',{question});clear($('#chat-answer'));$('#chat-answer').append(node('p',result.notice,'quiet'));if(!result.candidates.length)$('#chat-answer').append(node('p','No supporting match found for this query. Try a specific skill or an exact phrase in quotes.'));for(const c of result.candidates){const article=node('article',undefined,'answer');article.append(node('h3',c.name+(c.rank?` · #${c.rank}${c.tie?' (tie)':''} · ${c.score}/100`:'')),link('Original CV ↗',status?.demo?'/api/applications/'+c.application_id+'/source':c.cv_url));for(const f of c.findings||[])article.append(node('p',`${f.criterion_id}: ${f.level.replaceAll('_',' ')} — ${f.explanation}`));for(const cite of c.citations){article.append(node('blockquote',cite.quote),node('small',cite.location));}$('#chat-answer').append(article);}}catch(e){$('#chat-answer').textContent=e.message;}}
-$('#chat-form').onsubmit=e=>{e.preventDefault();ask();};document.querySelectorAll('[data-question]').forEach(b=>b.onclick=()=>{$('#question').value=b.dataset.question;ask();});
-async function askGrounded(){const question=$('#question').value;const box=$('#chat-answer');box.textContent='Composing a grounded answer for the selected role…';try{const result=await api('/api/roles/'+current+'/answer',{question});clear(box);box.append(node('p',result.notice,'quiet'));const gen=result.generated||{};const answer=node('article',undefined,'answer');answer.append(node('h3','AI-generated answer'));if(!gen.claims||!gen.claims.length){answer.append(node('p',gen.note||'No grounded answer could be produced from the retrieved passages.'));}else{for(const claim of gen.claims){answer.append(node('p',claim.text));for(const cite of claim.citations)answer.append(node('blockquote',cite.quote),node('small',(cite.name||'Applicant')+(cite.location?' · '+cite.location:'')));}if(gen.dropped_ungrounded_claims)answer.append(node('small',gen.dropped_ungrounded_claims+' ungrounded claim(s) were discarded.','quiet'));}box.append(answer);const src=node('section');src.append(node('h3','Retrieved sources'));const cands=result.retrieval?.candidates||[];if(!cands.length)src.append(node('p','No supporting passages were retrieved.'));for(const c of cands){const article=node('article',undefined,'answer');article.append(node('h3',c.name+(c.rank?` · #${c.rank}${c.tie?' (tie)':''} · ${c.score}/100`:'')),link('Original CV ↗',status?.demo?'/api/applications/'+c.application_id+'/source':c.cv_url));for(const cite of c.citations)article.append(node('blockquote',cite.quote),node('small',cite.location));src.append(article);}box.append(src);}catch(e){box.textContent=e.message;}}
-$('#answer').onclick=askGrounded;
-function renderSettings(){
- if(!status)return;
- const embedding=status.embedding_provider==='voyage'?'Voyage (hosted)':'Local Ollama (CPU)';
- const select=$('#embedding-provider');
- if(select){select.value=status.embedding_provider;select.querySelector('option[value=voyage]').disabled=!status.embedding_voyage_configured;}
- const help=$('#embedding-help');
- if(help)help.textContent=status.embedding_provider==='voyage'?'Voyage is active; completed CVs will be re-indexed when Auto process runs.':'Local embeddings keep CV text on this machine.';
- const cfg=[['Assessment',status.model_provider==='agentrouter'?'Agent Router (Codex CLI)':'Local Ollama'],['Model',status.model||'—'],['Model ready',status.model_ready?'Yes':'No'],['Embeddings',embedding],['Low score review',status.review_score_threshold?'< '+status.review_score_threshold+'/100':'Off'],['Auto process',status.automatic_pause?'Paused · quota exhausted':status.automatic?'On':'Off'],['Drive',status.demo?'Synthetic demo':status.drive_authorized?'Connected':'Sign-in required']];
- if(status.model_provider==='agentrouter'&&status.hosted_requests_remaining!=null)cfg.push(['Hosted requests left',String(status.hosted_requests_remaining)]);
- clear($('#settings-summary'));
- for(const [k,v]of cfg){const item=node('div',undefined,'stat');item.append(node('span',k),node('strong',v));$('#settings-summary').append(item);}
+$('#approval-form').onsubmit = async event => { event.preventDefault(); const actor = $('#actor').value.trim(), rubric = { criteria: readCriteria() }; if (Math.abs(rubric.criteria.reduce((sum, item) => sum + item.weight, 0) - 100) > .00001) { toast('Requirement points must total 100.'); return; } if (!actor) { toast('Enter the approver’s name.'); return; } $('#approve').disabled = true; try { await api('/api/roles/' + encodeURIComponent(current) + '/approve', { rubric, actor, jd_hash: draftHash, plan: 'reassess_all', confirm_job_relevance: $('#relevance').checked }); editRole = null; $('#relevance').checked = false; toast('Criteria applied. Current applications will be reassessed.'); await refreshRole(); } catch (error) { toast(error.message); } finally { $('#approve').disabled = false; } };
+$('#review-controls').onsubmit = async event => { event.preventDefault(); const actor = $('#review-actor').value.trim(), reason = $('#review-reason').value.trim(); if (!actor || !reason || !reviewId) { toast('Enter your name and a review reason.'); return; } $('#review-save').disabled = true; try { await api('/api/review/' + reviewId, { action: $('#review-action').value, actor, reason }); reviewId = null; $('#review-controls').hidden = true; toast('Review decision saved.'); await refreshRole(); } catch (error) { toast(error.message); } finally { $('#review-save').disabled = false; } };
+async function ask(summarize = false) {
+  const question = $('#question').value.trim(); if (!question) { $('#question').reportValidity(); return; } const roleId = current, box = $('#chat-answer'); box.textContent = summarize ? 'Preparing a summary with CV evidence…' : 'Looking through candidates for this job…'; $('#answer').disabled = true;
+  try { const result = await api('/api/roles/' + encodeURIComponent(roleId) + (summarize ? '/answer' : '/chat'), { question }); if (roleId !== current) return; clear(box);
+    if (summarize) { const generated = result.generated || {}, article = node('article', undefined, 'answer'); article.append(node('h3', 'Evidence summary')); if (!generated.claims?.length) article.append(node('p', 'A summary is unavailable. You can inspect any matching CV passages below.')); for (const claim of generated.claims || []) { article.append(node('p', claim.text)); for (const citation of claim.citations) article.append(node('blockquote', citation.quote), node('small', (citation.name || 'Candidate') + (citation.location ? ' · ' + citation.location : ''))); } box.append(article); }
+    const candidates = summarize ? result.retrieval?.candidates || [] : result.candidates || [];
+    if (!candidates.length) box.append(node('p', 'No supporting CV evidence found. Try a specific skill or an exact phrase in quotes.'));
+    for (const candidate of candidates) { const article = node('article', undefined, 'answer'); article.append(node('h3', candidate.name + (candidate.rank ? ' · #' + candidate.rank + ' · ' + candidate.score + '/100' : '')), link('Original CV ↗', status.demo ? '/api/applications/' + candidate.application_id + '/source' : candidate.cv_url)); for (const citation of candidate.citations) article.append(node('blockquote', citation.quote), node('small', citation.location)); box.append(article); }
+  } catch (error) { if (roleId === current) box.textContent = error.message; } finally { $('#answer').disabled = false; }
 }
-async function loadUsage(){
- try{
-  const u=await api('/api/usage'), box=$('#usage'), a=u.assessment, e=u.embedding, f=u.failures;
-  const rows=[['Assessments run',String(a.total)],['Assessments (24h)',String(a.last_24h)],['Last assessment',date(a.last)]];
-  if(a.daily_limit!=null)rows.push(['Hosted daily limit',String(a.daily_limit)],['Hosted requests left',a.remaining==null?'—':String(a.remaining)]);
-  rows.push(['Embedding runs',String(e.events)],['Sections embedded',String(e.sections)],['Characters embedded',String(e.chars)],
-   ['Embedding tokens',e.tokens_reported==null?'Not billed (local CPU)':e.tokens_reported+' (provider-reported)'],
-   ['Last embedding',date(e.last)],['Failed jobs',String(f.jobs_failed)],['Unindexed / failed index',String(f.index_failed)]);
-  clear(box);
-  box.append(node('h3','Usage'),node('p','Embedding usage is tracked separately from assessment usage. Local embeddings incur no token or dollar cost.','quiet'));
-  const grid=node('div',undefined,'stats');
-  for(const [k,v]of rows){const item=node('div',undefined,'stat');item.append(node('span',k),node('strong',v));grid.append(item);}
-  box.append(grid);
-  if(f.recent&&f.recent.length){box.append(node('h4','Recent failures'));for(const r of f.recent)box.append(node('div',`Application #${r.application_id} · ${r.step} · ${r.error} at ${date(r.error_at)}`,'log'));}
- }catch(err){$('#usage').textContent=err.message;}
+$('#chat-form').onsubmit = event => { event.preventDefault(); ask(); }; $('#answer').onclick = () => ask(true);
+document.querySelectorAll('[data-question]').forEach(button => button.onclick = () => { $('#question').value = button.dataset.question; ask(); });
+function renderProgress() {
+  if (!status || !detail) return;
+  const label = $('#progress-label'), info = $('#progress-detail'), elapsed = $('#progress-time'), progress = $('#progress-bar');
+  if (Date.now() - lastRefresh > 20000) { label.textContent = 'Reconnecting to the workspace'; info.textContent = 'Screening status will update when the connection returns.'; progress.removeAttribute('value'); elapsed.textContent = ''; return; }
+  const active = status.active_job, localJob = active && detail.applications.some(application => application.id === active.application_id);
+  if (localJob) { label.textContent = 'Screening a CV'; elapsed.textContent = Math.max(0, Math.floor(Date.now() / 1000 - active.started)) + 's'; info.textContent = active.filename || 'New application'; progress.removeAttribute('value'); }
+  else { const summary = detail.analytics; elapsed.textContent = ''; progress.max = summary.total || 1; progress.value = summary.total - summary.pipeline.pending - summary.pipeline.failed; label.textContent = detail.role.paused ? 'Job criteria need approval' : !summary.total ? 'Ready for the first CV' : status.automatic_pause ? 'Screening temporarily paused' : summary.pipeline.failed ? 'Some CVs need attention' : summary.pipeline.pending ? status.automatic ? 'CVs waiting for screening' : 'Screening paused' : 'Screening up to date'; info.textContent = summary.total ? number(summary.pipeline.completed) + ' assessed · ' + number(summary.pipeline.review) + ' to review · ' + number(summary.pipeline.pending) + ' awaiting screening' : 'Upload a CV or sync the job folder to get started.'; }
 }
-function renderProgress(){
- const bar=$('#progress-bar'), label=$('#progress-label'), info=$('#progress-detail'), elapsed=$('#progress-time');
- if(!status)return;
- if(Date.now()-lastRefresh>10000){bar.value=0;label.textContent='Status connection lost';info.textContent='Reconnecting…';elapsed.textContent='';return;}
- const job=status.active_job, index=status.active_index;
- const duration=start=>{const n=Math.max(0,Math.floor(Date.now()/1000-start));return n<60?n+'s':Math.floor(n/60)+'m '+n%60+'s';};
- if(job){
-  const steps=['download','extract','assess','report','move'];
-  const names={download:'Downloading CV',extract:'Reading CV / OCR',assess:'AI assessing CV',report:'Saving report',move:'Moving CV'};
-  label.textContent=names[job.step]||'Processing CV';elapsed.textContent=duration(job.started);
-  if(job.step==='assess'||job.step==='extract'||job.step==='report'){bar.removeAttribute('value');}
-  else{bar.max=steps.length;bar.value=Math.max(0,steps.indexOf(job.step))+1;}
-  info.textContent=(job.filename||'Application #'+job.application_id)+(job.step==='assess'?' · Model turn '+(job.turns||1)+' of at most '+(status.model_turn_limit||12)+' · '+(job.sections_read||0)+' sections read':'');
- }else if(index){
-  label.textContent='Building search index';elapsed.textContent=duration(index.started);bar.removeAttribute('value');
-  info.textContent=index.filename+' · Section '+index.section+' of '+index.sections;
- }else{
-  const jobs=status.jobs||[], done=jobs.filter(j=>j.state==='done').reduce((n,j)=>n+j.count,0), total=jobs.reduce((n,j)=>n+j.count,0);
-  const waiting=jobs.filter(j=>j.state==='waiting_model'||j.state==='waiting_rubric').reduce((n,j)=>n+j.count,0);
-  const failed=jobs.filter(j=>j.state==='failed').reduce((n,j)=>n+j.count,0);
-  const reviews=status.reviews||[];
-  bar.max=total||1;bar.value=done;elapsed.textContent='';
-  const quotaExhausted=status.automatic_pause&&status.hosted_requests_remaining===0;
-  label.textContent=quotaExhausted?'Hosted quota exhausted':!status.automatic?'Processing off':waiting?'Waiting for setup':failed?'Some files need attention':reviews.length?'Needs HR review':total>done?'Waiting for worker':'Idle';
-  const reason=reviews.slice(0,2).map(r=>(r.filename||'Application #'+r.application_id)+': '+(r.review_reason||'Reason not recorded')).join(' · ');
-  const quota=quotaExhausted?' · Hosted daily request quota: '+status.hosted_requests_limit+'/'+status.hosted_requests_limit+' used; resets at 00:00 UTC':'';
-  info.textContent=(total?done+' / '+total+' files finished'+(failed?' · '+failed+' failed':''):'No files queued.')+quota+(reason?' · '+reason:'');
- }
-}
-refresh();setInterval(refresh,2000);setInterval(renderProgress,1000);
+refresh(); setInterval(refresh, 5000); setInterval(renderProgress, 1000);

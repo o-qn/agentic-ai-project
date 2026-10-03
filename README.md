@@ -13,7 +13,7 @@ The application is a proof of concept. Assessment output and automatic draft sco
 - Provides keyword and semantic applicant search.
 - Provides evidence-grounded role answers. Retrieved CV passages are shown with the answer, while stored assessment scores remain authoritative.
 - Generates XLSX and CSV reports.
-- Supports local Ollama embeddings or opt-in Voyage hosted embeddings, selectable from the dashboard.
+- Supports local Ollama embeddings or opt-in Voyage hosted embeddings, selectable from the owner page.
 
 The default deployment is local-only. It is designed for sensitive CV data and has no public-user authentication layer.
 
@@ -45,7 +45,7 @@ systemctl --user enable --now hr-ollama.service hr-web.service hr-scanner.servic
 systemctl --user status hr-web.service hr-scanner.service
 ~~~
 
-The dashboard's **Auto process** switch controls whether queued Drive work is processed. **Check Drive now** queues an immediate scan. A scan runs only while the scanner service is running.
+The dashboard's **Screen new CVs** switch controls whether queued Drive work is processed. **Sync CVs** queues an immediate scan. A scan runs only while the scanner service is running.
 
 ## Google Drive authentication
 
@@ -63,7 +63,7 @@ If the dashboard shows:
 invalid_grant: Token has been expired or revoked.
 ~~~
 
-run the auth command again, complete the browser flow, restart the scanner, and press **Check Drive now**:
+run the auth command again, complete the browser flow, restart the scanner, and press **Sync CVs**:
 
 ~~~bash
 systemctl --user restart hr-scanner.service
@@ -75,17 +75,28 @@ If Drive is unavailable, the worker can appear idle because no scan job can comp
 journalctl --user -u hr-scanner.service -n 100 --no-pager
 ~~~
 
-## Dashboard controls
+## Dashboard workspace
 
-The dashboard has three independent controls:
+The HR dashboard at `/` is organized around four views:
 
-- **Assessment provider/model** chooses local Ollama or Agent Router for candidate assessment.
-- **Embedding provider** chooses Local Ollama or Voyage hosted embeddings.
-- **Auto process** enables or pauses queued processing.
+- **Job overview** shows the selected job's application counts, application status chart, score distribution, requirement coverage, and highest current scores.
+- **Candidates** provides name/email/file search, status and score-range filters, sorting, CV profiles, source evidence, and reports.
+- **Needs review** lets HR inspect flagged CVs and record a named review decision with a reason.
+- **Job criteria** provides editable requirement descriptions, points, and evidence rules instead of a JSON editor. Points must total 100 before approval and reassessment.
 
-Changing the embedding provider marks completed applications as pending for reindexing. The next Auto process run reindexes them; it does not rescore candidates. The provider shown in **Settings & usage** is the effective runtime provider, including a dashboard selection stored in the database.
+Select a job opening to update all views and charts. Clicking an application status or score range opens the matching candidates. Score and requirement charts use only current comparable assessments; review flags, duplicates, old versions, and paused rankings are excluded. Application status counts cover all active applications for that job and count each application once.
 
-Voyage is offered in the selector only when both HR_EMBED_HOSTED_MODEL and a Voyage key are configured. Selecting Voyage requires an explicit confirmation because CV text is sent to the hosted provider.
+**Screen new CVs** enables or pauses processing. **Sync CVs** queues a Drive scan. Uploading a CV does not enable processing by itself. Reports and CSV exports remain available in the job toolbar.
+
+### Owner usage and models
+
+The separate `/owner` page displays the active assessment provider/model and effective search embedding provider/model, including local fallback when Voyage configuration is incomplete. Assessment provider/model changes remain in `.env`; the embedding provider can be switched on the owner page.
+
+Usage includes completed assessments, recorded embedding runs, sections, characters, provider-reported tokens, model history, seven days of activity (UTC), failures, and service/sync status. Assessment counts are committed results, not all inference attempts. Embedding history comes from the existing bounded ledger; a notice appears when it covers only its most recent 5 MB. Cached embeddings do not add usage events. Missing token counts are shown as unavailable, and monetary costs are not estimated.
+
+Changing the embedding provider queues completed CVs for reindexing without rescoring them. Enable **Screen new CVs** to process that work. Voyage is selectable only when its model and key are configured and requires confirmation because CV passages and search queries are sent to its hosted API.
+
+The owner page retains the existing local-access and CSRF protections. It is a separate workspace view, not account-based authorization; any user with access to this local application can open it. Maintenance resets live here, away from everyday HR work.
 
 ## Configuration
 
@@ -140,7 +151,7 @@ Additional settings for Google Drive, Agent Router, PostgreSQL, and the report f
    systemctl --user restart hr-web.service hr-scanner.service
    ~~~
 
-4. Open **Settings & usage**, choose **Voyage hosted**, confirm the change, and let Auto process reindex the pending applications.
+4. Open `/owner`, choose **Voyage hosted**, confirm the change, and let Auto process reindex the pending applications.
 
 The app records embedding events, section counts, characters, and provider-reported usage when the provider returns it. Voyage plan limits and quota errors are enforced by Voyage; the free plan does not change the setup steps. Because CV text leaves the machine, use the hosted option only when that data handling is acceptable.
 
@@ -178,7 +189,7 @@ The role answer endpoint is:
 GET /api/roles/<role_id>/answer
 ~~~
 
-The dashboard's **Grounded answer** action retrieves relevant passages from indexed CVs and asks the selected assessment model to answer from those passages. The response includes evidence passages and source links. If generation is unavailable, the retrieval result and an error are returned instead of silently showing an ungrounded answer.
+The dashboard's **Summarize evidence** action retrieves relevant passages from indexed CVs and asks the selected assessment model to answer from those passages. The response includes evidence passages and source links. If generation is unavailable, the retrieval result and an error are returned instead of silently showing an ungrounded answer.
 
 Grounded answers do not change assessment scores, ranking, or report data. Treat them as a review aid and verify the cited CV evidence.
 
@@ -231,7 +242,7 @@ journalctl --user -u hr-scanner.service -n 100 --no-pager
 
 Common fixes:
 
-- **Worker idle:** enable **Auto process**, press **Check Drive now**, and confirm the scanner service is running.
+- **Worker idle:** enable **Screen new CVs**, press **Sync CVs**, and confirm the scanner service is running.
 - **invalid_grant:** re-run hr_agent.cli auth, then restart hr-scanner.service.
 - **Voyage unavailable in the selector:** set HR_EMBED_HOSTED_MODEL, verify the key file name/content, and restart the web service.
 - **Embedding errors:** check the selected provider, model name, provider quota, and the usage panel.

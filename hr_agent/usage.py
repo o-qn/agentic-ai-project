@@ -53,7 +53,9 @@ def _read_ledger(config):
         if not line:
             continue
         try:
-            events.append(json.loads(line))
+            event = json.loads(line)
+            if isinstance(event, dict):
+                events.append(event)
         except ValueError:
             continue  # a torn or corrupt line never breaks the summary
     return events
@@ -99,6 +101,27 @@ def failure_summary(db):
 
 
 def report(config, db, ollama):
+    selected = db.setting('embedding_provider', config.embed_provider)
+    hosted = selected == 'voyage' and bool(config.embed_hosted_model and config.embed_key)
+    now = time.time()
+    today = int(now // 86400) * 86400
+    events = _read_ledger(config)
+    activity = []
+    for offset in range(6, -1, -1):
+        start = today - offset * 86400
+        activity.append({'date': time.strftime('%Y-%m-%d', time.gmtime(start)),
+                         'assessments': db.one('SELECT COUNT(*) AS n FROM assessments WHERE created>=? AND created<?',
+                                               (start, start + 86400))['n'],
+                         'embedding_events': sum(start <= e.get('at', 0) < start + 86400 for e in events)})
+    try:
+        truncated = (Path(config.data)/EMBEDDING_LEDGER).stat().st_size > MAX_LEDGER_BYTES
+    except OSError:
+        truncated = False
     return {'assessment': assessment_summary(config, db, ollama),
             'embedding': embedding_summary(config),
-            'failures': failure_summary(db)}
+            'failures': failure_summary(db), 'activity': activity,
+            'configuration': {'embedding_provider': 'voyage' if hosted else 'ollama',
+                              'embedding_model': config.embed_hosted_model if hosted else config.embed_model,
+                              'embedding_selection': selected,
+                              'embedding_fallback': selected == 'voyage' and not hosted},
+            'embedding_history_truncated': truncated}

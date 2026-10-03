@@ -94,11 +94,15 @@ def test_upload_lifts_body_cap_only_for_this_route(system):
 
 def test_dashboard_renders_upload_and_settings_controls(system):
     config, db, drive, model, scanner, worker = system
-    body = create_app(config, db, model, drive).test_client().get('/').get_data(as_text=True)
-    # The upload control (#5) and the collapsed Settings section (#4) are present.
+    client = create_app(config, db, model, drive).test_client()
+    body = client.get('/').get_data(as_text=True)
+    # HR uploads remain in recruitment; model settings are on the owner page.
     assert 'id="upload"' in body
     assert 'id="cv-file"' in body and 'accept=".pdf,.docx,.txt"' in body
-    assert 'id="settings"' in body
+    assert 'id="settings"' not in body
+    owner = client.get('/owner').get_data(as_text=True)
+    assert 'id="settings"' in owner
+    assert 'id="embedding-provider"' in owner
 
 
 @pytest.mark.parametrize('sharing', ['anyone', 'domain'])

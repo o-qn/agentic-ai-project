@@ -145,7 +145,7 @@ def test_answer_endpoint_separates_retrieval_and_generation(system):
 def test_dashboard_renders_grounded_answer_control(system):
     config, db, drive, model = system[0], system[1], system[2], system[3]
     body = create_app(config, db, model, drive).test_client().get('/').get_data(as_text=True)
-    assert 'id="answer"' in body and 'Grounded answer' in body     # #6 control alongside plain search
+    assert 'id="answer"' in body and 'Summarize evidence' in body
 
 
 def test_generation_failure_is_visible_without_leaking_provider_text(system, monkeypatch):
