@@ -2,7 +2,7 @@
 let current = '', detail = null, status = null, reviewId = null, editRole = null, draftHash = null;
 let refreshing = false, roleRequest = 0, scoreRange = null, criteria = [], lastRefresh = 0;
 const stageNames = { pending: 'Awaiting screening', completed: 'Assessed', review: 'Needs review', duplicate: 'Duplicate CV', failed: 'Needs attention' };
-const viewTitles = { overview: ['Job overview', 'Know your talent pool. Find the people worth a closer look.'], candidates: ['Candidates', 'A clear view of every applicant, with the CV evidence to back it up.'], reviews: ['Needs review', 'Give flagged applications a thoughtful second look.'], criteria: ['Job criteria', 'Define what a strong application looks like for this job.'] };
+const viewTitles = { overview: ['Job overview', 'Application status, assessment scores, and requirement coverage for the selected job.'], candidates: ['Candidates', 'Search applications and review supporting CV evidence.'], reviews: ['Needs review', 'Review flagged applications and record decisions.'], criteria: ['Job criteria', 'Manage job requirements, scoring weights, and evidence criteria.'] };
 function showView(view, focus = false) {
   if (!viewTitles[view]) view = 'overview';
   document.querySelectorAll('[data-view]').forEach(element => element.hidden = element.dataset.view !== view);

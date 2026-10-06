@@ -31,23 +31,18 @@ button, a, input, select, textarea, summary{scroll-margin-top:20px}
 [hidden]{display:none!important}
 
 .sidebar{position:fixed;inset:0 auto 0 0;width:236px;padding:34px 22px 20px;background:white;border-right:1px solid var(--line);display:flex;flex-direction:column;z-index:10}
-.brand{display:flex;align-items:center;gap:11px;color:var(--ink);font-size:25px;font-weight:700;letter-spacing:-1px;margin-bottom:50px}
-.brand:hover{text-decoration:none}
-.brand-symbol{height:38px;width:38px;display:grid;place-items:center;background:var(--accent);border-radius:11px;color:white;font-size:29px;line-height:1}
-.brand-sub{display:block;font-size:8px;letter-spacing:1.3px;color:var(--muted);font-weight:600;margin-top:2px}
+.department-header{display:flex;flex-direction:column;gap:4px;margin-bottom:34px;padding:0 13px}
+.department-label{font-size:11px;color:var(--muted);font-weight:500}
+.department-home{font-size:18px;color:var(--ink);font-weight:600;letter-spacing:-.2px}
 .nav-label{font-size:10px;color:#84939e;letter-spacing:1.4px;margin:0 13px 14px}
 .nav-item{display:flex;align-items:center;gap:12px;color:var(--muted);padding:12px 13px;margin-bottom:6px;border-radius:8px;font-weight:550}
 .nav-item>span:first-child{width:20px;font-size:19px;line-height:1}
 .nav-item.active{background:var(--accent-soft);color:var(--accent)}
 .nav-item:hover{background:#f4f7f6;text-decoration:none}
 .nav-count{font-size:10px;background:#fff;border-radius:5px;margin-left:auto;padding:2px 6px}
-.sidebar-bottom{margin-top:auto}
-.sidebar-caption{display:block;color:#8a979e;font-size:12px;padding:10px 12px}
+.sidebar-bottom{margin-top:auto;border-top:1px solid var(--line);padding-top:8px}
 .owner-link{display:block;color:var(--muted);font-size:12px;padding:16px 12px}
-.workspace-badge{display:flex;gap:11px;border-top:1px solid var(--line);padding:19px 7px 0;font-size:12px;font-weight:600}
-.workspace-badge small{display:block;font-weight:400;margin-top:1px}
 .avatar{height:42px;width:42px;display:grid;place-items:center;background:#eef2f5;color:#647788;border-radius:12px;font-size:13px;font-weight:650;flex-shrink:0}
-.small-avatar{height:32px;width:32px;border-radius:50%;background:#eaf2ef;color:var(--accent);font-size:10px}
 
 main{margin-left:236px;padding:0 42px 40px;max-width:1900px}
 .topline{display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding:22px 0;font-size:12px;color:var(--muted)}
@@ -244,14 +239,13 @@ main{margin-left:210px}
 
 
 @media(max-width:900px){.sidebar{position:static;width:100%;padding:16px 22px;display:block;border-right:none;border-bottom:1px solid var(--line)}
-.brand{margin-bottom:14px;font-size:22px}
-.brand-symbol{height:32px;width:32px}
+.department-header{margin-bottom:16px;padding:0}
 .sidebar nav{display:flex;gap:5px;flex-wrap:wrap}
-.nav-label,.sidebar-caption,.workspace-badge{display:none}
+.nav-label{display:none}
 .nav-item{font-size:12px;padding:8px 10px;margin:0}
 .nav-item>span:first-child{font-size:15px;width:16px}
-.sidebar-bottom{position:absolute;right:20px;top:12px}
-.owner-link{font-size:11px;padding:12px 0}
+.sidebar-bottom{margin-top:14px;padding-top:0}
+.owner-link{font-size:11px;padding:9px 0}
 main{margin:0;padding:0 24px 30px}
 .page-header{padding:25px 0}
 .stats{gap:10px}

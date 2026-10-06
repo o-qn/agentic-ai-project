@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Owner · Talent{% endblock %}
+{% block title %}Usage and models · Recruitment dashboard{% endblock %}
 {% block navigation %}<nav aria-label="Owner workspace"><a href="/" class="nav-item"><span aria-hidden="true">◫</span> HR workspace</a><a href="/owner" class="nav-item active" aria-current="page"><span aria-hidden="true">⌁</span> Usage &amp; models</a></nav>{% endblock %}
 {% block footer_url %}/{% endblock %}{% block footer_label %}Back to recruitment →{% endblock %}
 {% block content %}
 <div class="topline"><span>Workspace <span class="separator">/</span> Owner</span><span class="advisory">Local access</span></div>
-<header class="page-header"><div><span class="eyebrow">WORKSPACE OWNER</span><h1>Usage &amp; models</h1><p>See what’s running, what’s been used, and what needs attention.</p></div><button id="refresh-owner">↻ Refresh usage</button></header>
+<header class="page-header"><div><span class="eyebrow">SYSTEM ADMINISTRATION</span><h1>Usage &amp; models</h1><p>Model configuration, usage records, and service status.</p></div><button id="refresh-owner">↻ Refresh usage</button></header>
 <p id="owner-notice" class="notice" role="status">Loading workspace usage…</p>
 <div id="owner-stats" class="stats"></div>
 <div class="model-grid">
