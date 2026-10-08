@@ -1,3 +1,4 @@
+<!-- Project wrap-up: HR screening application. -->
 # CV Screening
 
 A local HR screening assistant for discovering CVs from Google Drive, extracting candidate data, assessing applicants, indexing them for search, and producing reviewable reports.

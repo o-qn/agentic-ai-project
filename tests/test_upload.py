@@ -1,3 +1,4 @@
+# Project wrap-up: HR screening application.
 """Direct CV upload (dashboard -> role's Incoming CVs -> ordinary discovery).
 
 The upload only deposits a file and asks for a scan; it must not enable Auto

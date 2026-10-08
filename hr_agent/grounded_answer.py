@@ -1,3 +1,4 @@
+# Project wrap-up: HR screening application.
 """Evidence-grounded generated answers (#6).
 
 Retrieval happens first and stays AUTHORITATIVE and SEPARATE from generation: scores, ranks and

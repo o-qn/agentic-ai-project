@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Project wrap-up: HR screening application.
 """Render reviewable user-systemd units without installing or starting them."""
 import argparse
 from pathlib import Path

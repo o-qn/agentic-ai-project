@@ -1,3 +1,4 @@
+# Project wrap-up: HR screening application.
 import json
 import pytest
 from hr_agent.ollama_client import Ollama

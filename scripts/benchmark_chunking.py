@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Project wrap-up: HR screening application.
 """Compare fixed / structure / hybrid chunking on the same inputs, fully offline.
 
 Chunking operates on page text, so this benchmarks on text fixtures (the .txt

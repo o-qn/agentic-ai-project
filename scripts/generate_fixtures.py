@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Project wrap-up: HR screening application.
 """Regenerate synthetic fixtures; requires reportlab, Pillow and python-docx (test tooling only)."""
 from pathlib import Path
 import json

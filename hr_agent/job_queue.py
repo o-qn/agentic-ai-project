@@ -1,3 +1,4 @@
+# Project wrap-up: HR screening application.
 """Durable processing state machine. One worker; no inference in the scanner."""
 import fcntl
 import hashlib

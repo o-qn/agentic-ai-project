@@ -1,3 +1,4 @@
+# Project wrap-up: HR screening application.
 from pathlib import Path
 import pytest
 from hr_agent.document_reader import extract,NeedsReview

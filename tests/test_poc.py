@@ -1,3 +1,4 @@
+# Project wrap-up: HR screening application.
 import json
 from hr_agent.rubric import enable_poc
 from hr_agent.demo import drain

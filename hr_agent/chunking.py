@@ -1,3 +1,4 @@
+# Project wrap-up: HR screening application.
 """Structure-aware CV chunking that produces an exact, contiguous partition.
 
 Three strategies share one output contract so they can be compared directly on

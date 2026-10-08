@@ -1,3 +1,4 @@
+# Project wrap-up: HR screening application.
 """Offline genuine-CLI probe: fake provider/key, no paid requests. Linux only."""
 import sys, json, threading, tempfile, subprocess
 from pathlib import Path

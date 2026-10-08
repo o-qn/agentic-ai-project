@@ -1,3 +1,4 @@
+# Project wrap-up: HR screening application.
 """Usage panel (#7): embedding usage tracked separately from assessment usage.
 
 Assessment usage is read from committed assessments; embedding usage is read from

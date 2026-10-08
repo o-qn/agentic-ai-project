@@ -1,3 +1,4 @@
+-- Project wrap-up: HR screening application.
 ALTER TABLE jobs ADD COLUMN generation INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE roles ADD COLUMN jd_error TEXT;
 CREATE TRIGGER rubric_frozen BEFORE UPDATE ON rubrics WHEN OLD.approved_at IS NOT NULL

@@ -1,3 +1,4 @@
+# Project wrap-up: HR screening application.
 from .schemas import Assessment, Rubric
 
 FACTORS = {'supported':1.0,'partial':0.5,'not_demonstrated':0.0}

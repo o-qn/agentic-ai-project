@@ -1,3 +1,4 @@
+# Project wrap-up: HR screening application.
 """Synthetic-only fixtures and deterministic test double. Never selected by production service."""
 import hashlib
 import json

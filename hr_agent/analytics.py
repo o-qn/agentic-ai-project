@@ -1,3 +1,4 @@
+# Project wrap-up: HR screening application.
 """Read-only job charts built from current, comparable assessment results."""
 import json
 

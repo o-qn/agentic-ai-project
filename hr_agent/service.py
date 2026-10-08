@@ -1,3 +1,4 @@
+# Project wrap-up: HR screening application.
 import fcntl
 import multiprocessing
 import signal

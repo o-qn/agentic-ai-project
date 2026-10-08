@@ -1,3 +1,4 @@
+# Project wrap-up: HR screening application.
 """PostgreSQL + pgvector mirror (#2): ready-to-activate, inert until a DSN is configured.
 
 These tests use an in-memory ``FakePg`` in place of a live connection — no Postgres, no

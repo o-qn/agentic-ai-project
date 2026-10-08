@@ -1,3 +1,4 @@
+# Project wrap-up: HR screening application.
 [build-system]
 requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"

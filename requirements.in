@@ -1,3 +1,4 @@
+# Project wrap-up: HR screening application.
 Flask>=3.1,<4
 pydantic>=2.11,<3
 openpyxl>=3.1,<4

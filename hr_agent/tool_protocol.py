@@ -1,3 +1,4 @@
+# Project wrap-up: HR screening application.
 """Schema-constrained tool envelopes for local models; execution still uses per-tool validators."""
 from .schemas import TOOL_MODELS, GroundedArgs
 

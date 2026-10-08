@@ -1,3 +1,4 @@
+<!-- Project wrap-up: HR screening application. -->
 # Fieldwork — local HR screening assistant
 
 ## Quick personal proof of concept

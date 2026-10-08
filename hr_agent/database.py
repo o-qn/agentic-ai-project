@@ -1,3 +1,4 @@
+# Project wrap-up: HR screening application.
 from contextlib import contextmanager
 from pathlib import Path
 import json

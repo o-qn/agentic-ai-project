@@ -1,3 +1,4 @@
+/* Project wrap-up: HR screening application. */
 'use strict';
 let status = null, usage = null, loading = false;
 function historyTable(headers, rows) {

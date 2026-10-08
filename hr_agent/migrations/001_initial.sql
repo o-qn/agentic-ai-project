@@ -1,3 +1,4 @@
+-- Project wrap-up: HR screening application.
 CREATE TABLE IF NOT EXISTS schema_version(version INTEGER PRIMARY KEY);
 CREATE TABLE settings(key TEXT PRIMARY KEY, value TEXT NOT NULL);
 INSERT INTO settings VALUES('automatic','false');

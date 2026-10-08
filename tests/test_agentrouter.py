@@ -1,3 +1,4 @@
+# Project wrap-up: HR screening application.
 from hr_agent.dashboard import create_app
 
 

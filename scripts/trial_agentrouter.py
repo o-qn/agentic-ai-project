@@ -1,3 +1,4 @@
+# Project wrap-up: HR screening application.
 """Three synthetic CVs, no Drive access or real applicant data. Run from project root."""
 import sys
 from pathlib import Path

@@ -1,3 +1,4 @@
+# Project wrap-up: HR screening application.
 """Hosted embedding client (#1): ready-to-activate, inert until a key is configured.
 
 These tests use an injected fake transport — no network, no real key. They prove

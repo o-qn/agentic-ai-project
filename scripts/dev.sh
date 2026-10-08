@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Project wrap-up: HR screening application.
 set -euo pipefail
 umask 077
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."

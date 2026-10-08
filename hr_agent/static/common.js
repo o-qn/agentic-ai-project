@@ -1,3 +1,4 @@
+/* Project wrap-up: HR screening application. */
 'use strict';
 const $ = selector => document.querySelector(selector);
 const csrf = $('meta[name="csrf-token"]').content;

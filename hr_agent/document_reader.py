@@ -1,3 +1,4 @@
+# Project wrap-up: HR screening application.
 """Bounded extraction in a killable subprocess; preserves every extracted section."""
 from pathlib import Path
 import json

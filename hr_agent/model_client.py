@@ -1,3 +1,4 @@
+# Project wrap-up: HR screening application.
 """Select the assessment provider; embeddings remain local."""
 from .ollama_client import Ollama
 

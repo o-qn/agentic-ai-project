@@ -1,3 +1,4 @@
+# Project wrap-up: HR screening application.
 import json
 import threading
 import time

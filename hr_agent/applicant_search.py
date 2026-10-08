@@ -1,3 +1,4 @@
+# Project wrap-up: HR screening application.
 """Read-only, role-scoped retrieval. Answers use source quotes and database scores."""
 import copy
 import json

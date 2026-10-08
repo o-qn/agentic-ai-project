@@ -1,3 +1,4 @@
+# Project wrap-up: HR screening application.
 """PostgreSQL + pgvector mirror (#2): ready-to-activate, inert until a DSN is configured.
 
 SQLite stays the LIVE, AUTHORITATIVE store. This module builds a *parallel* copy of the

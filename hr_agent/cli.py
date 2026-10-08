@@ -1,3 +1,4 @@
+# Project wrap-up: HR screening application.
 import argparse
 from dataclasses import replace
 import json

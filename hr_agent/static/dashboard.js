@@ -1,3 +1,4 @@
+/* Project wrap-up: HR screening application. */
 'use strict';
 let current = '', detail = null, status = null, reviewId = null, editRole = null, draftHash = null;
 let refreshing = false, roleRequest = 0, scoreRange = null, criteria = [], lastRefresh = 0;
@@ -153,11 +154,9 @@ function renderNotice() {
   if (detail?.role.paused) notes.push('This job needs approved criteria. Open Job criteria to get screening started.');
   if (!status.drive_authorized && !status.demo) notes.push('Drive needs reconnecting. Contact the workspace owner.');
   if (serviceOffline(status)) notes.push('CV syncing is currently offline. Contact the workspace owner to resume updates.');
-  if (status.scan_error) notes.push('CV sync needs attention. The workspace owner can see the details.');
   if (status.automatic_pause) notes.push('Screening is temporarily paused. Contact the workspace owner.');
-  if (status.poc_mode && !status.demo) notes.push('Trial workspace · Review draft scores and criteria before making decisions.');
-  $('#notice').classList.toggle('warning', !!(detail?.role.paused || (!status.drive_authorized && !status.demo) || status.scan_error || status.automatic_pause || serviceOffline(status)));
-  $('#notice').textContent = notes.join(' ') || 'Workspace up to date · Your team reviews the evidence and makes the hiring decisions.';
+  $('#notice').classList.toggle('warning', !!(detail?.role.paused || (!status.drive_authorized && !status.demo) || status.automatic_pause || serviceOffline(status)));
+  $('#notice').textContent = notes.join(' ') || 'Application data loaded.';
 }
 async function refreshHolds() {
   const result = await api('/api/blacklist'); clear($('#blacklist-list'));

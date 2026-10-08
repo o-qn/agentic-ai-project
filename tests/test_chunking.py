@@ -1,3 +1,4 @@
+# Project wrap-up: HR screening application.
 """Contract for structure-aware chunking (hr_agent/chunking.py).
 
 Guards the invariants the rest of the system relies on: an exact contiguous

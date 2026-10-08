@@ -1,3 +1,4 @@
+# Project wrap-up: HR screening application.
 """Pluggable text embedding. Local Ollama (CPU) is the default and stays the
 default; a hosted embedder is a drop-in that activates only when a key and a
 hosted model are configured.

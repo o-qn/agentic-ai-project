@@ -1,3 +1,4 @@
+# Project wrap-up: HR screening application.
 """Job analytics must describe current comparable CVs without altering results."""
 import json
 import time

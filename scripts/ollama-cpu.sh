@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Project wrap-up: HR screening application.
 set -euo pipefail
 # Use a dedicated local server. The systemd unit also enforces memory/device limits.
 export OLLAMA_HOST=127.0.0.1:11434

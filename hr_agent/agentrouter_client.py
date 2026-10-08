@@ -1,3 +1,4 @@
+# Project wrap-up: HR screening application.
 """Genuine Codex CLI transport; Python owns application tools and CPU embeddings."""
 import hashlib
 import json

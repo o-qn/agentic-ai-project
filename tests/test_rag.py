@@ -1,3 +1,4 @@
+# Project wrap-up: HR screening application.
 """Evidence-grounded generated answers (#6).
 
 These tests prove the properties the spec requires of a RAG answer:

@@ -1,3 +1,4 @@
+# Project wrap-up: HR screening application.
 """Drive v3 adapter. Never changes sharing permissions. OAuth stays on disk, mode 0600."""
 from pathlib import Path
 import io

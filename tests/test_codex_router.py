@@ -1,3 +1,4 @@
+# Project wrap-up: HR screening application.
 """Offline transport and bounded-loop regression tests; no provider requests."""
 import json
 import os

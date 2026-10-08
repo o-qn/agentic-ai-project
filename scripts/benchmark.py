@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Project wrap-up: HR screening application.
 """Measure synthetic workflow; --real uses local Ollama, otherwise labelled test doubles."""
 
 import argparse

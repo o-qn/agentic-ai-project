@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Project wrap-up: HR screening application.
 """Measure the real 300-second scheduler against synthetic Drive and slow model doubles.
 
 No Google access or real inference. Requires about 5.5 minutes; data must be isolated.
